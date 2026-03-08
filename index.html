@@ -1,646 +1,804 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Taku — Competency Dashboard</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<style>
-:root {
-  --bg:#0f1117; --card:#1a1d27; --card2:#20232f; --card3:#252837;
-  --accent:#6c7bff; --accent2:#4fd1c5; --green:#48bb78;
-  --yellow:#f6ad55; --red:#fc8181; --text:#e2e8f0; --muted:#718096;
-  --border:#2d3148; --drawer:360px;
-}
-*{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;overflow-x:hidden}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Taku — Competency Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    /* ── ThinkCell Blue & White Theme ── */
+    :root {
+      --tc-navy:   #003D8F;
+      --tc-blue:   #0059B3;
+      --tc-mid:    #1976D2;
+      --tc-light:  #4DA3E8;
+      --tc-pale:   #E8F3FF;
+      --tc-border: #C3D9F0;
+      --bg:        #F0F5FB;
+      --surface:   #FFFFFF;
+      --text-dark: #142540;
+      --text-mid:  #3A5878;
+      --text-light:#7A9AB8;
+      /* category palette – all blue family */
+      --cat-exec:  #003D8F;
+      --cat-lead:  #1565C0;
+      --cat-inter: #1976D2;
+      --cat-pers:  #0288D1;
+      --cat-strat: #01579B;
+      --cat-cog:   #0277BD;
+      --cat-orig:  #546E7A;
+      /* score thresholds */
+      --s-hi:  #0059B3;
+      --s-mid: #4DA3E8;
+      --s-lo:  #F4A623;
+      --s-nil: #C3D9F0;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+      background: var(--bg);
+      color: var(--text-dark);
+      font-size: 13px;
+      line-height: 1.5;
+    }
 
-/* ─── Layout shell ─── */
-.app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
-.top-area{flex-shrink:0}
-.body-area{display:flex;flex:1;overflow:hidden}
-.main-scroll{flex:1;overflow-y:auto;padding-bottom:40px}
+    /* ── Header ── */
+    .header {
+      background: var(--tc-navy);
+      color: #fff;
+      padding: 14px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 3px solid var(--tc-blue);
+    }
+    .hdr-title { font-size: 19px; font-weight: 700; letter-spacing: .2px; }
+    .hdr-sub   { font-size: 11px; opacity: .65; margin-top: 2px; }
+    .hdr-badges { display: flex; gap: 8px; }
+    .hdr-badge {
+      background: rgba(255,255,255,.13);
+      border: 1px solid rgba(255,255,255,.28);
+      border-radius: 4px;
+      padding: 4px 12px;
+      font-size: 11px;
+      white-space: nowrap;
+    }
 
-/* ─── Header ─── */
-.header{background:linear-gradient(135deg,#1a1d27,#16192a);border-bottom:1px solid var(--border);padding:20px 32px;display:flex;justify-content:space-between;align-items:center}
-.header h1{font-size:1.3rem;font-weight:700}.header h1 span{color:var(--accent)}
-.header p{color:var(--muted);font-size:0.8rem;margin-top:3px}
-.badges{display:flex;gap:10px}
-.badge{background:var(--card2);border:1px solid var(--border);border-radius:7px;padding:5px 12px;font-size:0.75rem;color:var(--muted)}
-.badge.active{border-color:var(--accent);color:var(--accent)}
+    /* ── Layout ── */
+    .container { max-width: 1440px; margin: 0 auto; padding: 18px 22px; }
 
-/* ─── KPI ─── */
-.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;padding:18px 32px 0}
-.kpi{background:var(--card);border:1px solid var(--border);border-radius:11px;padding:16px 20px}
-.kpi-label{font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
-.kpi-value{font-size:1.8rem;font-weight:700;margin-top:5px}
-.kpi-sub{font-size:0.72rem;color:var(--muted);margin-top:3px}
-.chip{display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.7rem;margin-top:5px}
-.chip.g{background:rgba(72,187,120,.15);color:var(--green)}
-.chip.y{background:rgba(246,173,85,.15);color:var(--yellow)}
-.chip.r{background:rgba(252,129,129,.15);color:var(--red)}
+    /* ── KPI Row ── */
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .kpi-card {
+      background: var(--surface);
+      border: 1px solid var(--tc-border);
+      border-left: 4px solid var(--tc-blue);
+      border-radius: 6px;
+      padding: 14px 18px;
+    }
+    .kpi-label { font-size: 10px; text-transform: uppercase; letter-spacing: .8px; color: var(--text-mid); font-weight: 600; }
+    .kpi-val   { font-size: 30px; font-weight: 700; color: var(--tc-blue); line-height: 1.1; margin: 3px 0; }
+    .kpi-sub   { font-size: 11px; color: var(--text-light); }
+    .kpi-name  { font-size: 14px; font-weight: 700; color: var(--tc-navy); margin: 4px 0; }
+    .kpi-chip  {
+      display: inline-block;
+      background: var(--tc-pale);
+      color: var(--tc-blue);
+      font-size: 11px; font-weight: 600;
+      padding: 2px 9px; border-radius: 10px;
+    }
 
-/* ─── Charts row ─── */
-.charts-row{display:grid;grid-template-columns:1fr 1.5fr;gap:16px;padding:18px 32px 0}
-.card{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:20px}
-.card-title{font-size:0.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:14px}
-.cat-row{display:flex;align-items:center;gap:10px;margin-bottom:13px}
-.cat-name{font-size:0.75rem;width:200px;flex-shrink:0}
-.bar-track{flex:1;background:var(--card2);border-radius:3px;height:7px;overflow:hidden}
-.bar-fill{height:100%;border-radius:3px;transition:width .8s ease}
-.cat-score{font-size:0.78rem;font-weight:600;width:28px;text-align:right;flex-shrink:0}
+    /* ── Chart Cards ── */
+    .charts-row {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--tc-border);
+      border-radius: 6px;
+      padding: 14px 16px;
+    }
+    .card-title {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .8px; color: var(--text-mid);
+      border-bottom: 2px solid var(--tc-pale);
+      padding-bottom: 7px; margin-bottom: 12px;
+    }
 
-/* ─── Trend ─── */
-.trend-wrap{padding:16px 32px 0}
+    /* ── Category Bars ── */
+    .cat-bars { display: flex; flex-direction: column; gap: 9px; }
+    .cat-bar-row {
+      display: grid;
+      grid-template-columns: 170px 1fr 46px;
+      gap: 10px;
+      align-items: center;
+    }
+    .cat-bar-lbl { font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cat-bar-cnt { font-size: 10px; color: var(--text-light); }
+    .bar-track   { height: 20px; background: var(--tc-pale); border-radius: 2px; position: relative; overflow: hidden; }
+    .bar-fill    { height: 100%; border-radius: 2px; display: flex; align-items: center; justify-content: flex-end; padding-right: 6px; }
+    .bar-fill-txt{ font-size: 10px; color: #fff; font-weight: 700; }
+    .cat-score   { font-size: 13px; font-weight: 700; text-align: right; }
 
-/* ─── Competency grid ─── */
-.section-hdr{padding:20px 32px 10px;display:flex;align-items:baseline;gap:16px}
-.section-hdr h2{font-size:.9rem;font-weight:600}
-.section-hdr p{font-size:.75rem;color:var(--muted)}
-.comp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:0 32px 0}
+    /* ── Trend row ── */
+    .trend-card { margin-bottom: 16px; }
 
-.comp-card{
-  background:var(--card);border:1px solid var(--border);border-radius:10px;
-  padding:13px 15px;cursor:pointer;transition:border-color .15s,transform .1s;
-  position:relative;
-}
-.comp-card:hover{border-color:var(--accent);transform:translateY(-1px)}
-.comp-card.active{border-color:var(--accent);background:var(--card3)}
-.comp-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:7px}
-.comp-name{font-size:.8rem;font-weight:600;line-height:1.3;flex:1}
-.comp-src{font-size:.62rem;padding:2px 6px;border-radius:3px;flex-shrink:0;margin-left:6px;margin-top:1px}
-.src-ppt{background:rgba(108,123,255,.15);color:#9ba8ff}
-.src-lom{background:rgba(79,209,197,.15);color:#4fd1c5}
-.src-both{background:rgba(246,173,85,.15);color:#f6ad55}
-.comp-cat{font-size:.65rem;color:var(--muted);margin-bottom:8px}
-.score-row{display:flex;align-items:center;gap:7px}
-.score-track{flex:1;background:var(--card2);border-radius:3px;height:4px;overflow:hidden}
-.score-fill{height:100%;border-radius:3px}
-.score-num{font-size:.8rem;font-weight:700;width:26px;text-align:right;flex-shrink:0}
-.q-dots{display:flex;gap:4px;margin-top:8px}
-.q-dot{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.55rem;font-weight:700}
-.q-dot.scored{background:rgba(108,123,255,.2);color:var(--accent);border:1px solid var(--accent)}
-.q-dot.empty{background:var(--card2);color:var(--muted);border:1px solid var(--border)}
-.has-note::after{content:'📝';position:absolute;top:8px;right:8px;font-size:.6rem}
+    /* ── Comp Section ── */
+    .section-legend {
+      display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .legend-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-mid); }
+    .legend-dot  { width: 10px; height: 10px; border-radius: 2px; }
+    .comp-section { margin-bottom: 18px; }
+    .cat-header {
+      display: flex; align-items: center; gap: 8px;
+      padding: 9px 14px; border-radius: 5px 5px 0 0;
+      color: #fff;
+    }
+    .cat-header-icon { font-size: 14px; }
+    .cat-header-name { font-size: 13px; font-weight: 700; }
+    .cat-header-count{ font-size: 11px; opacity: .75; }
+    .cat-header-avg  { margin-left: auto; background: rgba(255,255,255,.2); padding: 2px 10px; border-radius: 10px; font-size: 11px; }
+    .comp-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+      gap: 1px;
+      background: var(--tc-border);
+      border: 1px solid var(--tc-border);
+      border-top: none;
+      border-radius: 0 0 5px 5px;
+      overflow: hidden;
+    }
+    .comp-card {
+      background: var(--surface);
+      padding: 11px 13px;
+      cursor: pointer;
+      transition: background .12s;
+    }
+    .comp-card:hover  { background: var(--tc-pale); }
+    .comp-card.active { background: var(--tc-pale); outline: 2px solid var(--tc-blue); outline-offset: -2px; }
+    .comp-top   { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px; }
+    .comp-name  { font-size: 12px; font-weight: 700; color: var(--text-dark); flex: 1; line-height: 1.3; }
+    .src-badge  { font-size: 9px; padding: 1px 5px; border-radius: 3px; font-weight: 600; margin-left: 5px; flex-shrink: 0; }
+    .src-ppt    { background: #E3F2FD; color: #1565C0; }
+    .src-lom    { background: #E8F5E9; color: #2E7D32; }
+    .src-both   { background: #FFF3E0; color: #E65100; }
+    .score-row  { display: flex; align-items: center; gap: 7px; margin-top: 5px; }
+    .score-track{ flex: 1; height: 5px; background: var(--tc-pale); border-radius: 3px; overflow: hidden; }
+    .score-fill { height: 100%; border-radius: 3px; }
+    .score-num  { font-size: 12px; font-weight: 700; min-width: 22px; text-align: right; }
+    .q-dots     { display: flex; gap: 3px; margin-top: 5px; }
+    .q-dot      { flex: 1; height: 4px; border-radius: 2px; }
+    .q-dot.on   { background: var(--tc-blue); }
+    .q-dot.off  { background: var(--tc-border); }
 
-/* ─── Detail Drawer ─── */
-.drawer{
-  width:var(--drawer);flex-shrink:0;background:var(--card);
-  border-left:1px solid var(--border);overflow-y:auto;
-  transition:width .25s ease,opacity .25s ease;
-  display:flex;flex-direction:column;
-}
-.drawer.closed{width:0;opacity:0;overflow:hidden;border:none}
-.drawer-inner{padding:24px 20px;min-width:var(--drawer)}
-.drawer-close{
-  display:flex;justify-content:flex-end;margin-bottom:16px
-}
-.close-btn{
-  background:var(--card2);border:1px solid var(--border);color:var(--muted);
-  border-radius:6px;padding:4px 10px;cursor:pointer;font-size:.75rem;
-}
-.close-btn:hover{color:var(--text);border-color:var(--accent)}
-.drawer-name{font-size:1.1rem;font-weight:700;margin-bottom:4px}
-.drawer-cat{font-size:.72rem;color:var(--muted);margin-bottom:14px}
-.score-big{display:flex;align-items:center;gap:10px;margin-bottom:18px}
-.score-circle{
-  width:56px;height:56px;border-radius:50%;display:flex;align-items:center;
-  justify-content:center;font-size:1.2rem;font-weight:700;
-  border:3px solid var(--border);flex-shrink:0;
-}
-.score-label{font-size:.72rem;color:var(--muted)}
-.score-label strong{display:block;font-size:.85rem;color:var(--text)}
-.section-tag{font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--accent2);margin:14px 0 7px}
-.def-en{font-size:.78rem;line-height:1.7;color:#a0aec0;font-style:italic}
-.def-jp{font-size:.78rem;line-height:1.7;color:var(--text);margin-top:8px;padding:10px 12px;background:var(--card2);border-radius:7px;border-left:3px solid var(--accent)}
-.src-badge{display:inline-block;padding:3px 10px;border-radius:5px;font-size:.72rem;margin-top:6px}
-.next-action-area{margin-top:6px}
-.next-action-box{
-  width:100%;background:var(--card2);border:1px solid var(--border);
-  border-radius:7px;color:var(--text);font-size:.78rem;padding:9px 11px;
-  resize:none;font-family:inherit;line-height:1.6;min-height:70px;
-}
-.next-action-box:focus{outline:none;border-color:var(--accent)}
-.q-history{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
-.q-hist-item{background:var(--card2);border:1px solid var(--border);border-radius:7px;padding:7px 11px;font-size:.72rem;min-width:70px;text-align:center}
-.q-hist-item .q-period{color:var(--muted);margin-bottom:3px}
-.q-hist-item .q-val{font-size:1rem;font-weight:700}
-.notion-link{display:inline-flex;align-items:center;gap:5px;margin-top:14px;font-size:.72rem;color:var(--muted);text-decoration:none;padding:5px 10px;border:1px solid var(--border);border-radius:6px;transition:color .15s,border-color .15s}
-.notion-link:hover{color:var(--accent);border-color:var(--accent)}
+    /* ── Drawer ── */
+    .overlay { position: fixed; inset: 0; background: rgba(0,30,70,.38); z-index: 100; display: none; }
+    .overlay.open { display: block; }
+    .drawer {
+      position: fixed; right: 0; top: 0; bottom: 0; width: 420px;
+      background: var(--surface); border-left: 2px solid var(--tc-blue);
+      z-index: 101; transform: translateX(100%); transition: transform .24s ease;
+      display: flex; flex-direction: column; overflow-y: auto;
+    }
+    .drawer.open { transform: translateX(0); }
+    .drawer-hdr {
+      background: var(--tc-navy); color: #fff;
+      padding: 14px 18px; display: flex; align-items: flex-start; justify-content: space-between;
+    }
+    .d-close { background: none; border: none; color: #fff; font-size: 20px; cursor: pointer; line-height: 1; }
+    .drawer-body { padding: 18px; flex: 1; }
+    .d-score-wrap {
+      display: flex; align-items: center; gap: 14px;
+      background: var(--tc-pale); border-radius: 6px; padding: 12px 14px; margin-bottom: 14px;
+    }
+    .d-circle {
+      width: 62px; height: 62px; border-radius: 50%;
+      border: 3px solid var(--tc-blue);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; font-weight: 700; color: var(--tc-blue); flex-shrink: 0;
+    }
+    .d-sec { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--text-mid); margin: 12px 0 5px; }
+    .d-text {
+      font-size: 12px; line-height: 1.65; color: var(--text-dark);
+      background: var(--bg); padding: 9px 11px; border-radius: 4px;
+      border-left: 3px solid var(--tc-blue);
+    }
+    .d-hist { display: flex; gap: 6px; }
+    .d-hist-item { flex: 1; text-align: center; background: var(--bg); border-radius: 4px; padding: 5px 3px; }
+    .d-hist-period { font-size: 9px; color: var(--text-light); }
+    .d-hist-val    { font-size: 13px; font-weight: 700; margin-top: 2px; }
+    .d-link { color: var(--tc-blue); text-decoration: none; font-size: 12px; font-weight: 600; }
+    .d-link:hover { text-decoration: underline; }
+    .d-ta {
+      width: 100%; padding: 8px; border: 1px solid var(--tc-border); border-radius: 4px;
+      font-size: 12px; resize: vertical; min-height: 58px; color: var(--text-dark);
+      font-family: inherit;
+    }
 
-/* ─── Divider ─── */
-.divider{height:1px;background:var(--border);margin:14px 0}
-</style>
+    @media (max-width: 900px) {
+      .kpi-row { grid-template-columns: repeat(2,1fr); }
+      .charts-row { grid-template-columns: 1fr; }
+      .drawer { width: 100%; }
+    }
+  </style>
 </head>
 <body>
 
-<script>
-/* ════════════════════════════════════════════════════════
-   DATA — 四半期ごとにここを更新
-════════════════════════════════════════════════════════ */
-const PROFILE = { name:"Taku", lastUpdated:"2025.10", nextReview:"2026 Q2" };
+<!-- ══ Header ══ -->
+<div class="header">
+  <div>
+    <div class="hdr-title" id="hdrTitle">Taku — Competency Dashboard</div>
+    <div class="hdr-sub">Lominger × PM Session 統合トラッカー ｜ クリックで詳細を表示</div>
+  </div>
+  <div class="hdr-badges">
+    <div class="hdr-badge" id="hdrLast">最終更新: 2025.10</div>
+    <div class="hdr-badge" id="hdrNext">次回レビュー: 2026 Q2</div>
+  </div>
+</div>
 
-const COMPETENCIES = [
-  // ── Execution & Results Orientation ──
-  { name:"Action Oriented", cat:"Execution", src:"both",
-    s_2025_10:80, q1:null, q2:null, q3:null, q4:null,
-    en:"Enjoys working hard; is action oriented and full of energy for the things he/she sees as challenging; not fearful of acting with a minimum of planning; seizes more opportunities than others.",
-    jp:"行動することで学びを得るタイプ。計画に固執しすぎずまず試してみる姿勢がある。挑戦的な状況ほど前に出やすく、機会を逃さない。動きながら軌道修正していくことに強みを感じる。",
-    nextAction:"", notionUrl:"https://www.notion.so/290cdd87cea081249a3bd76f4213a1c7" },
+<div class="container">
 
-  { name:"Organizing", cat:"Execution", src:"both",
-    s_2025_10:80, q1:null, q2:null, q3:null, q4:null,
-    en:"Can marshal resources (people, funding, material, support) to get things done; can orchestrate multiple activities at once to accomplish a goal; uses resources effectively and efficiently.",
-    jp:"人・予算・情報をまとめ上げる力がある。複数のプロセスを同時に回しながら目標を達成する。効率的なリソース配置と段取りが強み。全体の動きを俯瞰しながら調整する。",
-    nextAction:"", notionUrl:"https://www.notion.so/290cdd87cea08126b33cf5e054b54452" },
-
-  { name:"Perseverance", cat:"Execution", src:"lominger",
-    s_2025_10:80, q1:null, q2:null, q3:null, q4:null,
-    en:"Pursues everything with energy, drive, and a need to finish; seldom gives up before finishing, especially in the face of resistance or setbacks.",
-    jp:"物事をやり切る粘り強さがある。抵抗や逆風の中でも歩みを止めない。完了までのエネルギー配分を意識し、立て直しながら進む。中長期の勝ち筋を信じて続ける。",
-    nextAction:"", notionUrl:"https://www.notion.so/290cdd87cea081a2bd9ed7561d022635" },
-
-  { name:"Drive For Results", cat:"Execution", src:"both",
-    s_2025_10:80, q1:null, q2:null, q3:null, q4:null,
-    en:"Can be counted on to exceed goals successfully; is constantly and consistently one of the top performers; very bottom-line oriented; steadfastly pushes self and others for results.",
-    jp:"結果に執着し、約束を守る力がある。数字に強く、目標を超えるための工夫を続ける。自分にも他者にも適切な圧をかけ、やり切る。成果物で語るタイプ。",
-    nextAction:"", notionUrl:"https://www.notion.so/290cdd87cea0817093cbd2c937a3b125" },
-
-  // ── People Leadership & Development ──
-  { name:"Command Skills", cat:"Leadership", src:"lominger",
-    s_2025_10:80, q1:null, q2:null, q3:null, q4:null,
-    en:"Relishes leading; takes unpopular stands if necessary; encourages direct and tough debate but isn't afraid to end it and move on; is looked to for direction in a crisis; faces adversity head on.",
-    jp:"リードすることを厭わない。必要なら不人気な立場も取れる。議論をまとめ、方向を示す。危機のとき頼られる存在になる。",
-    nextAction:"", notionUrl:"https://www.notion.so/290cdd87cea08103b364d2f1c259f2d8" },
-
-  { name:"Delegation", cat:"Leadership", src:"lominger",
-    s_2025_10:80, q1:null, q2:null, q3:null, q4:null,
-    en:"Clearly and comfortably delegates both routine and important tasks and decisions; broadly shares both responsibility and accountability; tends to trust people to perform; lets direct reports finish their own work.",
-    jp:"任せるべき仕事を見極め、権限を手放せる。最後まで抱え込まず、信頼して任せる。責任と裁量をセットで渡し、成長の機会にする。任せた後のフォローも意識する。",
-    nextAction:"", notionUrl:"https://www.notion.so/290cdd87cea0817e9844f8cf227f20d2" },
-
-  { name:"Building Eff. Teams", cat:"Leadership", src:"both",
-    s_2025_10:80, q1:null, q2:null, q3:null, q4:null,
-    en:"Blends people into teams when needed; creates strong morale and spirit in his/her team; shares wins and successes; fosters open dialogue; lets people finish and be responsible for their work; defines success in terms of the whole team.",
-    jp:"チームの士気と一体感を高められる。成功を分かち合い、対話を促進する。任せ切る姿勢で責任と自律を生む。所属感をデザインする。",
-    nextAction:"", notionUrl:"https://www.notion.so/290cdd87cea081d09352c41868da0c80" },
-
-  { name:"Hiring & Staffing", cat:"Leadership", src:"both",
-    s_2025_10:null, q1:null, q2:null, q3:null, q4:null,
-    en:"Has a nose for talent; hires the best people available from inside or outside; is not afraid of selecting strong people; assembles talented staffs.",
-    jp:"優秀な人材を見抜き採用できる。内外問わず最良の人材を集める力。強い人材を選ぶことを恐れない。チームの質を高め続ける。",
-    nextAction:"", notionUrl:"" },
-
-  { name:"Developing People", cat:"Leadership", src:"ppt",
-    s_2025_10:null, q1:null, q2:null, q3:null, q4:null,
-    en:"Provides challenging and stretching tasks and assignments; holds frequent development discussions; is aware of each person's career goals; constructs compelling development plans.",
-    jp:"部下の成長を自分の成果として捉える。ストレッチアサインメントを与え、育成計画を作る。キャリアゴールを把握し、対話を重ねる。",
-    nextAction:"", notionUrl:"" },
-
-  { name:"Strategic Leadership", cat:"Leadership", src:"ppt",
-    s_2025_10:null, q1:null, q2:null, q3:null, q4:null,
-    en:"Provides a clear direction and vision to the group; generates a sense of purpose and mission; is able to inspire the organization in difficult times; links strategy to day-to-day actions.",
-    jp:"組織に明確な方向性と目的感を与える。難局でも前進させる推進力がある。戦略を日々の行動につなげる橋渡し役。",
-    nextAction:"", notionUrl:"" },
-
-  // ── Interpersonal & Communication Skills ──
-  { name:"Negotiating", cat:"Interpersonal", src:"both",
-    s_2025_10:80, q1:null, q2:null, q3:null, q4:null,
-    en:"Can negotiate skillfully in tough situations with both internal and external groups; can settle differences with minimum noise; can win concessions without damaging relationships; gains trust quickly.",
-    jp:"利害が衝突する場でも合意をつくれる。関係性を壊さず、納得のいく着地点を見つける。直球と丁寧さを使い分け、タイミングを読む。信頼を積み上げながら進める。",
-    nextAction:"", notionUrl:"https://www.notion.so/290cdd87cea081b895bccf8a1690dc60" },
-
-  { name:"Listening", cat:"Interpersonal", src:"lominger",
-    s_2025_10:80, q1:null, q2:null, q3:null, q4:null,
-    en:"Practices attentive and active listening; has the patience to hear people out; can accurately restate the opinions of others even when he/she disagrees.",
-    jp:"相手の話を最後まで丁寧に聴く。意見が違っても正確に受け取り、返せる。傾聴は信頼関係の出発点。",
-    nextAction:"", notionUrl:"https://www.notion.so/290cdd87cea0812d856cd498c58321ce" },
-
-  { name:"Humor", cat:"Interpersonal", src:"lominger",
-    s_2025_10:60, q1:null, q2:null, q3:null, q4:null,
-    en:"Has a positive and constructive sense of humor; can laugh at him/herself and with others; is appropriately funny and can use humor to ease tension.",
-    jp:"場に合わせてユーモアを使える。緊張をほぐし、関係を前向きにする。自分自身も笑いの対象にでき、柔らかな空気を生む。適切な線引きを心得ている。",
-    nextAction:"", notionUrl:"https://www.notion.so/290cdd87cea08165848bfbd2cc34849c" },
-
-  { name:"Communicating Skills", cat:"Interpersonal", src:"ppt",
-    s_2025_10:null, q1:null, q2:null, q3:null, q4:null,
-    en:"Is able to write and present clearly and succinctly in a variety of communication settings and styles; command attention and can manage group process during the presentation.",
-    jp:"様々な場面で明確かつ的確に伝えられる。場の流れを読みながら発信する。聴衆に合わせてスタイルを変える柔軟性がある。",
-    nextAction:"", notionUrl:"" },
-
-  { name:"Interpersonal Skills", cat:"Interpersonal", src:"ppt",
-    s_2025_10:null, q1:null, q2:null, q3:null, q4:null,
-    en:"Is easy to approach and talk to; spends the extra effort to put others at ease; can be warm and diplomatic; is a good listener; is patient.",
-    jp:"近づきやすく、話しやすい存在。相手を安心させるための一手間を惜しまない。温かく、かつ外交的な立ち居振る舞いができる。",
-    nextAction:"", notionUrl:"" },
-
-  { name:"Open Communications", cat:"Interpersonal", src:"ppt",
-    s_2025_10:null, q1:null, q2:null, q3:null, q4:null,
-    en:"Creates an atmosphere of open communications; shares information broadly; is transparent about business goals and challenges.",
-    jp:"オープンな対話の場をつくる。情報を広く共有し、透明性を保つ。ビジネスの課題をチームと正直に共有できる。",
-    nextAction:"", notionUrl:"" },
-
-  { name:"Org. Agility", cat:"Interpersonal", src:"both",
-    s_2025_10:null, q1:null, q2:null, q3:null, q4:null,
-    en:"Knowledgeable about how organizations work; knows how to get things done both through formal channels and informal networks; understands the origin and reasoning behind key policies.",
-    jp:"組織の動き方を熟知している。公式・非公式を問わず物事を進める手段を持つ。根回しと正式ルートを使い分ける。",
-    nextAction:"", notionUrl:"" },
-
-  { name:"Conflict Management", cat:"Interpersonal", src:"both",
-    s_2025_10:null, q1:null, q2:null, q3:null, q4:null,
-    en:"Steps up to conflicts, seeing them as opportunities; reads situations quickly; good at focused listening; can hammer out tough agreements and settle disputes equitably.",
-    jp:"対立を機会として捉え、正面から向き合う。状況を素早く読み、公平な合意点を導く。ヒアリング力と調整力を組み合わせる。",
-    nextAction:"", notionUrl:"https://www.notion.so/290cdd87cea08178a1f5c444d1ccf042" },
-
-  // ── Personal Effectiveness & Self-Management ──
-  { name:"Compassion", cat:"Personal", src:"lominger",
-    s_2025_10:80, q1:null, q2:null, q3:null, q4:null,
-    en:"Genuinely cares about people; is concerned about their work and non-work problems; is available and ready to help; is sympathetic to the plight of others not as fortunate.",
-    jp:"人そのものへの関心が本物。仕事上の問題にも私生活の悩みにも気を配る。困っている人に手を差し伸べる自然な姿勢がある。",
-    nextAction:"", notionUrl:"https://www.notion.so/290cdd87cea081b18c38dd9fc7027e97" },
-
-  { name:"Composure", cat:"Personal", src:"both",
-    s_2025_10:70, q1:null, q2:null, q3:null, q4:null,
-    en:"Is cool under pressure; does not become defensive or irritated when times are tough; can handle stress; is not knocked off balance by the unexpected; is a settling influence in a crisis.",
-    jp:"プレッシャーの中でも感情をコントロールできる。動揺や防衛的反応を抑え、状況を整える。想定外にも強く、周囲の安心感につながる。難局でこそ安定感を発揮する。",
-    nextAction:"", notionUrl:"https://www.notion.so/290cdd87cea08184a495f5f764057ba9" },
-
-  { name:"Self-Development", cat:"Personal", src:"both",
-    s_2025_10:null, q1:null, q2:null, q3:null, q4:null,
-    en:"Is personally committed to and actively works to continuously improve him/herself; understands that different situations and levels may call for different skills and approaches; works to deploy strengths; works on compensating for weakness and limits.",
-    jp:"自己成長に継続的にコミットする。強みを磨き、弱点を補完する意識がある。状況に応じたスキルの使い分けを学び続ける。",
-    nextAction:"", notionUrl:"https://www.notion.so/290cdd87cea0817385c7ddeb744b2e6d" },
-
-  { name:"Integrity & Trust", cat:"Personal", src:"both",
-    s_2025_10:null, q1:null, q2:null, q3:null, q4:null,
-    en:"Is widely trusted; is seen as a direct, truthful individual; can present the unvarnished truth in an appropriate and helpful way; keeps confidences; doesn't misrepresent him/herself for personal gain.",
-    jp:"信頼される人物として見られている。正直かつ直接的な伝え方ができる。秘密を守り、個人的利益のために自分を偽らない。",
-    nextAction:"", notionUrl:"https://www.notion.so/290cdd87cea081ea9286e56b6bfb5937" },
-
-  { name:"Self Confidence", cat:"Personal", src:"ppt",
-    s_2025_10:null, q1:null, q2:null, q3:null, q4:null,
-    en:"Believes in oneself and one's own capabilities; handles setbacks confidently; is not unsettled by a tough audience; uses failure as a learning opportunity.",
-    jp:"自分の能力を信じて行動できる。失敗を糧にし、タフな環境でも揺れない。自信は根拠ある挑戦から生まれる。",
-    nextAction:"", notionUrl:"" },
-
-  { name:"Patience", cat:"Personal", src:"lominger",
-    s_2025_10:null, q1:null, q2:null, q3:null, q4:null,
-    en:"Is tolerant with people and processes; listens and checks before acting; tries to understand the people and the data before making judgments and acting; waits for others to catch up before moving on.",
-    jp:"人やプロセスへの寛容さがある。判断の前に十分に聴き、理解しようとする。周囲が追いつくのを待てる余裕がある。",
-    nextAction:"", notionUrl:"https://www.notion.so/290cdd87cea0810580aaf9bb2a4aa227" },
-
-  { name:"Standing Alone", cat:"Personal", src:"lominger",
-    s_2025_10:null, q1:null, q2:null, q3:null, q4:null,
-    en:"Will stand up and be counted; doesn't hide behind others; will take the heat; doesn't waver under pressure; willing to be the lone voice for an idea or position.",
-    jp:"孤立しても自分の立場を守れる。圧力に屈せず、信じる意見を一人でも主張できる。勇気ある単独行動ができる。",
-    nextAction:"", notionUrl:"https://www.notion.so/290cdd87cea08140a178dbf2cd3fe481" },
-
-  { name:"Managerial Courage", cat:"Personal", src:"both",
-    s_2025_10:null, q1:null, q2:null, q3:null, q4:null,
-    en:"Doesn't hold back anything that needs to be said; provides current, direct, complete, and 'actionable' positive and corrective feedback to others; lets people know where they stand.",
-    jp:"言うべきことを言える勇気がある。フィードバックを直接的かつ建設的に届ける。相手が自分の立ち位置を分かるよう伝える。",
-    nextAction:"", notionUrl:"https://www.notion.so/290cdd87cea081a3826ff88fb7ff0e51" },
-
-  // ── Strategic Thinking & Business Acumen ──
-  { name:"Creativity", cat:"Strategic", src:"both",
-    s_2025_10:70, q1:null, q2:null, q3:null, q4:null,
-    en:"Comes up with a lot of new and unique ideas; easily makes connections among previously unrelated notions; tends to be seen as original and value-added in brainstorming settings.",
-    jp:"既存の枠にとらわれず発想できる。離れた点をつなげ、新しい価値を生む。アイデア出しの場で存在感を発揮しやすい。実行可能性まで含めて形にしていく。",
-    nextAction:"", notionUrl:"https://www.notion.so/290cdd87cea081948643fe5d241baa29" },
-
-  { name:"Perspective", cat:"Strategic", src:"lominger",
-    s_2025_10:70, q1:null, q2:null, q3:null, q4:null,
-    en:"Looks toward the broadest possible view of an issue/challenge; has broad-ranging personal and business interests and pursuits; can easily pose future scenarios; can discuss multiple aspects and impacts of issues.",
-    jp:"最も広い視点でイシューを捉える。グローバルに考え、複数の側面と将来への影響を語れる。将来シナリオを描く力がある。",
-    nextAction:"", notionUrl:"https://www.notion.so/290cdd87cea081c79b68c057e181f521" },
-
-  { name:"Strategic Thinking", cat:"Strategic", src:"ppt",
-    s_2025_10:null, q1:null, q2:null, q3:null, q4:null,
-    en:"Accurately anticipates future consequences and trends; has broad knowledge and perspective; is future oriented; can create competitive and breakthrough strategies.",
-    jp:"将来のトレンドを先読みし、戦略を描く。競合優位につながる突破口を見つける。18ヶ月以上先を意識した思考ができる。",
-    nextAction:"", notionUrl:"" },
-
-  { name:"Innovation Mgmt", cat:"Strategic", src:"both",
-    s_2025_10:null, q1:null, q2:null, q3:null, q4:null,
-    en:"Is good at bringing the creative ideas of others to market; has good judgment about which creative ideas and suggestions will work; can project how potential ideas may play out in the marketplace.",
-    jp:"創造的なアイデアを市場に届ける力がある。どのアイデアが機能するかを見極め、実装まで導く。",
-    nextAction:"", notionUrl:"https://www.notion.so/290cdd87cea081c0b065e70f03362158" },
-
-  { name:"Customer Focus", cat:"Strategic", src:"both",
-    s_2025_10:null, q1:null, q2:null, q3:null, q4:null,
-    en:"Is dedicated to meeting the expectations and requirements of internal and external customers; acts with customers in mind; establishes and maintains effective relationships with customers.",
-    jp:"顧客の期待と要件を満たすことへの献身がある。顧客を常に念頭に置いて行動する。有効な関係を築き続ける。",
-    nextAction:"", notionUrl:"" },
-
-  // ── Cognitive & Learning Agility ──
-  { name:"Intellectual Horsepower", cat:"Cognitive", src:"both",
-    s_2025_10:null, q1:null, q2:null, q3:null, q4:null,
-    en:"Is bright and intelligent; deals with concepts and complexity comfortably; described as intellectually sharp, capable, and agile.",
-    jp:"知的な処理能力が高い。複雑な概念もすっきり整理できる。鋭く、素早く、柔軟な思考が特徴。",
-    nextAction:"", notionUrl:"https://www.notion.so/290cdd87cea081a78bfedaffec18104b" },
-
-  { name:"Dealing w/ Ambiguity", cat:"Cognitive", src:"both",
-    s_2025_10:null, q1:null, q2:null, q3:null, q4:null,
-    en:"Can effectively cope with change; can shift gears comfortably; can decide and act without having the total picture; isn't upset when things are up in the air.",
-    jp:"変化に対応し、不完全な情報の中でも決断できる。曖昧さを受け入れ、行動に移せる。不確実な状況でも動揺しない。",
-    nextAction:"", notionUrl:"https://www.notion.so/290cdd87cea081429174f43f086bcf97" },
-
-  { name:"Problem Solving", cat:"Cognitive", src:"both",
-    s_2025_10:null, q1:null, q2:null, q3:null, q4:null,
-    en:"Uses rigorous logic and methods to solve difficult problems with effective solutions; probes all fruitful sources for answers; can see hidden problems; is excellent at honest analysis.",
-    jp:"論理的に問題を解き、有効な解を導く。真因を探り、隠れた問題も見抜く。誠実な分析力がある。",
-    nextAction:"", notionUrl:"https://www.notion.so/290cdd87cea081458924dccfa81b7ff5" },
-
-  { name:"Technical Learning", cat:"Cognitive", src:"both",
-    s_2025_10:null, q1:null, q2:null, q3:null, q4:null,
-    en:"Picks up on technical things quickly; can learn new skills and knowledge; is good at learning new industry, company, product, or technical knowledge.",
-    jp:"新しい技術を素早く習得できる。業界・製品・技術知識を継続的にアップデートする。学習速度そのものが競争力になる。",
-    nextAction:"", notionUrl:"https://www.notion.so/290cdd87cea0813c98bfc3065fb0f5c5" },
-
-  { name:"Functional/Tech Skills", cat:"Cognitive", src:"both",
-    s_2025_10:null, q1:null, q2:null, q3:null, q4:null,
-    en:"Has the functional and technical knowledge and skills to do the job at a high level of accomplishment; demonstrates active interest in acquiring new technical knowledge.",
-    jp:"職能上の技術・知識を高いレベルで保有する。常に新しい技術知識を積極的に学ぼうとする姿勢がある。",
-    nextAction:"", notionUrl:"https://www.notion.so/290cdd87cea081d2bb49d0bb522e8909" },
-];
-
-const CATEGORIES = {
-  Execution:    { label:"Execution & Results",       color:"#f6ad55" },
-  Leadership:   { label:"People Leadership & Dev",   color:"#68d391" },
-  Interpersonal:{ label:"Interpersonal & Comm",      color:"#76e4f7" },
-  Personal:     { label:"Personal Effectiveness",    color:"#b794f4" },
-  Strategic:    { label:"Strategic Thinking",        color:"#fc8181" },
-  Cognitive:    { label:"Cognitive & Learning",      color:"#90cdf4" },
-};
-</script>
-
-<!-- ─── HTML ─── -->
-<div class="app">
-  <div class="top-area">
-    <!-- Header -->
-    <div class="header">
-      <div>
-        <h1><span id="hdrName"></span> — Competency Dashboard</h1>
-        <p>Lominger × PM Session 統合トラッカー ｜ クリックで詳細を表示</p>
-      </div>
-      <div class="badges">
-        <div class="badge active" id="hdrLast"></div>
-        <div class="badge" id="hdrNext"></div>
-      </div>
+  <!-- ══ KPI ══ -->
+  <div class="kpi-row">
+    <div class="kpi-card">
+      <div class="kpi-label">採点済み</div>
+      <div class="kpi-val" id="kpiScored">—</div>
+      <div class="kpi-sub" id="kpiScoredSub">全—中</div>
     </div>
-    <!-- KPIs -->
-    <div class="kpi-row">
-      <div class="kpi">
-        <div class="kpi-label">採点済み</div>
-        <div class="kpi-value" id="kpiScored" style="color:var(--accent)">—</div>
-        <div class="kpi-sub" id="kpiScoredSub"></div>
-      </div>
-      <div class="kpi">
-        <div class="kpi-label">平均スコア</div>
-        <div class="kpi-value" id="kpiAvg" style="color:var(--green)">—</div>
-        <div class="kpi-sub">採点済みベース</div>
-      </div>
-      <div class="kpi">
-        <div class="kpi-label">最強カテゴリ</div>
-        <div class="kpi-value" id="kpiTop" style="color:var(--yellow);font-size:1rem;margin-top:8px">—</div>
-        <div class="chip y" id="kpiTopSc"></div>
-      </div>
-      <div class="kpi">
-        <div class="kpi-label">伸び代カテゴリ</div>
-        <div class="kpi-value" id="kpiLow" style="color:var(--red);font-size:1rem;margin-top:8px">—</div>
-        <div class="chip r" id="kpiLowSc"></div>
-      </div>
+    <div class="kpi-card">
+      <div class="kpi-label">平均スコア</div>
+      <div class="kpi-val" id="kpiAvg">—</div>
+      <div class="kpi-sub">採点済みベース</div>
+    </div>
+    <div class="kpi-card" style="border-left-color:var(--cat-exec)">
+      <div class="kpi-label">最強カテゴリ</div>
+      <div class="kpi-name" id="kpiTop">—</div>
+      <div class="kpi-chip" id="kpiTopSc">—</div>
+    </div>
+    <div class="kpi-card" style="border-left-color:var(--cat-cog)">
+      <div class="kpi-label">伸び代カテゴリ</div>
+      <div class="kpi-name" id="kpiLow">—</div>
+      <div class="kpi-chip" id="kpiLowSc">—</div>
     </div>
   </div>
 
-  <div class="body-area">
-    <!-- Scrollable main -->
-    <div class="main-scroll">
-      <!-- Charts -->
-      <div class="charts-row" style="margin-top:16px">
-        <div class="card">
-          <div class="card-title">Radar — カテゴリ別強み</div>
-          <canvas id="radarChart" height="260"></canvas>
-        </div>
-        <div class="card">
-          <div class="card-title">カテゴリ平均スコア</div>
-          <div id="catBars"></div>
-        </div>
-      </div>
-      <!-- Trend -->
-      <div class="trend-wrap" style="margin-top:16px">
-        <div class="card">
-          <div class="card-title">四半期トレンド（2026）</div>
-          <canvas id="trendChart" height="80"></canvas>
-        </div>
-      </div>
-      <!-- Competency cards -->
-      <div class="section-hdr">
-        <h2>コンピテンシー一覧</h2>
-        <p><span style="color:#9ba8ff">■ PPT</span>&nbsp;<span style="color:#4fd1c5">■ Lominger</span>&nbsp;<span style="color:#f6ad55">■ 両方</span>&nbsp;｜ カードをクリックで詳細</p>
-      </div>
-      <div class="comp-grid" id="compGrid"></div>
-      <div style="height:24px"></div>
+  <!-- ══ Charts Row ══ -->
+  <div class="charts-row">
+    <div class="card">
+      <div class="card-title">RADAR — カテゴリ別強み</div>
+      <canvas id="radarChart" style="max-height:280px"></canvas>
     </div>
+    <div class="card">
+      <div class="card-title">カテゴリ平均スコア</div>
+      <div class="cat-bars" id="catBars"></div>
+    </div>
+  </div>
 
-    <!-- Detail Drawer -->
-    <div class="drawer closed" id="drawer">
-      <div class="drawer-inner">
-        <div class="drawer-close">
-          <button class="close-btn" onclick="closeDrawer()">✕ 閉じる</button>
-        </div>
-        <div class="drawer-name" id="dName"></div>
-        <div class="drawer-cat" id="dCat"></div>
-        <div class="score-big">
-          <div class="score-circle" id="dScoreCircle">—</div>
-          <div>
-            <div class="score-label">2025.10 スコア<strong id="dScoreLabel">未採点</strong></div>
-            <div id="dSrcBadge"></div>
-          </div>
-        </div>
+  <!-- ══ Trend ══ -->
+  <div class="card trend-card">
+    <div class="card-title">四半期トレンド（2025.10 → 2026）</div>
+    <canvas id="trendChart" style="max-height:190px"></canvas>
+  </div>
 
-        <div class="divider"></div>
-        <div class="section-tag">Definition（英語）</div>
-        <div class="def-en" id="dEn"></div>
+  <!-- ══ Legend ══ -->
+  <div class="section-legend">
+    <span style="font-size:12px;font-weight:700;color:var(--text-dark)">コンピテンシー一覧（カテゴリ別）</span>
+    <div class="legend-item"><div class="legend-dot" style="background:#E3F2FD;border:1px solid #90CAF9"></div>PPT</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#E8F5E9;border:1px solid #A5D6A7"></div>Lominger</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#FFF3E0;border:1px solid #FFCC80"></div>両方</div>
+    <span style="font-size:11px;color:var(--text-light);margin-left:auto">カードをクリックで詳細表示</span>
+  </div>
 
-        <div class="section-tag">内省的解釈（日本語）</div>
-        <div class="def-jp" id="dJp"></div>
+  <!-- ══ Comp Sections ══ -->
+  <div id="compSections"></div>
 
-        <div class="divider"></div>
-        <div class="section-tag">スコア履歴</div>
-        <div class="q-history" id="dHistory"></div>
+</div><!-- /container -->
 
-        <div class="divider"></div>
-        <div class="section-tag">Next Action（メモ）</div>
-        <div class="next-action-area">
-          <textarea class="next-action-box" id="dNextAction" placeholder="次の四半期に向けて..." rows="3"></textarea>
-        </div>
-        <div id="dNotionLink"></div>
+<!-- ══ Drawer ══ -->
+<div class="overlay" id="overlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-hdr">
+    <div>
+      <div style="font-size:15px;font-weight:700" id="dName">—</div>
+      <div style="font-size:11px;opacity:.7;margin-top:3px" id="dCat">—</div>
+    </div>
+    <button class="d-close" onclick="closeDrawer()">✕</button>
+  </div>
+  <div class="drawer-body">
+    <div class="d-score-wrap">
+      <div class="d-circle" id="dCircle">—</div>
+      <div>
+        <div id="dScoreLbl" style="font-size:13px;font-weight:600;color:var(--tc-blue)">—</div>
+        <div id="dSrcBadge" style="margin-top:4px"></div>
       </div>
     </div>
+    <div class="d-sec">Definition（英語）</div>
+    <div class="d-text" id="dEn">—</div>
+    <div class="d-sec">内省的解釈（日本語）</div>
+    <div class="d-text" id="dJp">—</div>
+    <div class="d-sec">スコア履歴</div>
+    <div class="d-hist" id="dHist"></div>
+    <div class="d-sec">Next Action（メモ）</div>
+    <textarea class="d-ta" id="dTA" placeholder="次のアクションを記入..."></textarea>
+    <div style="margin-top:11px" id="dLink"></div>
   </div>
 </div>
 
 <script>
-// ── Init ──────────────────────────────────────────────────
-document.getElementById('hdrName').textContent = PROFILE.name;
+/* ════════════════════════════════════════
+   DATA — Notionから取得した全コンピテンシー
+   ════════════════════════════════════════ */
+const PROFILE = { lastUpdated:"2025.10", nextReview:"2026 Q2" };
+
+const CATEGORIES = {
+  Execution:    { label:"Execution & Results",         color:"#003D8F", icon:"⚡" },
+  Leadership:   { label:"People Leadership & Dev",      color:"#1565C0", icon:"👥" },
+  Interpersonal:{ label:"Interpersonal & Comm",         color:"#1976D2", icon:"💬" },
+  Personal:     { label:"Personal Effectiveness",       color:"#0288D1", icon:"🎯" },
+  Strategic:    { label:"Strategic Thinking & Biz",     color:"#01579B", icon:"🔭" },
+  Cognitive:    { label:"Cognitive & Learning",         color:"#0277BD", icon:"🧠" },
+  Original:     { label:"Original",                     color:"#546E7A", icon:"⭐" },
+};
+
+const COMPETENCIES = [
+  // ── Execution & Results Orientation ──
+  { name:"Action Oriented",           cat:"Execution",     src:"both",    s:80,   q1:null, q2:null, q3:null, q4:null,
+    en:"Enjoys working hard; is action oriented and full of energy; seizes more opportunities than others.",
+    jp:"行動することで学びを得るタイプ。計画に固執しすぎずまず試してみる姿勢がある。挑戦的な状況ほど前に出やすく、機会を逃さない。",
+    url:"https://www.notion.so/290cdd87cea081249a3bd76f4213a1c7" },
+  { name:"Organizing",                cat:"Execution",     src:"both",    s:80,   q1:null, q2:null, q3:null, q4:null,
+    en:"Marshals resources to get things done; orchestrates multiple activities at once to accomplish goals.",
+    jp:"人・予算・情報をまとめ上げる力がある。複数のプロセスを同時に回しながら目標を達成する。",
+    url:"https://www.notion.so/290cdd87cea08126b33cf5e054b54452" },
+  { name:"Perseverance",              cat:"Execution",     src:"lominger", s:80,   q1:null, q2:null, q3:null, q4:null,
+    en:"Pursues everything with energy; seldom gives up before finishing, especially facing setbacks.",
+    jp:"物事をやり切る粘り強さがある。抵抗や逆風の中でも歩みを止めない。中長期の勝ち筋を信じて続ける。",
+    url:"https://www.notion.so/290cdd87cea081a2bd9ed7561d022635" },
+  { name:"Drive For Results",         cat:"Execution",     src:"both",    s:80,   q1:null, q2:null, q3:null, q4:null,
+    en:"Can be counted on to exceed goals; steadfastly pushes self and others for results.",
+    jp:"結果に執着し、約束を守る力がある。数字に強く、自分にも他者にも適切な圧をかけ、やり切る。",
+    url:"https://www.notion.so/290cdd87cea0817093cbd2c937a3b125" },
+  { name:"Planning",                  cat:"Execution",     src:"lominger", s:80,   q1:null, q2:null, q3:null, q4:null,
+    en:"Accurately scopes tasks; sets objectives; breaks work into steps; measures performance against goals.",
+    jp:"目的から逆算して、道筋とマイルストーンを設計できる。リスクを見越して手を打つ。段取り力が強み。",
+    url:"https://www.notion.so/290cdd87cea08180ab74e9570aef2d86" },
+  { name:"Priority Setting",          cat:"Execution",     src:"lominger", s:80,   q1:null, q2:null, q3:null, q4:null,
+    en:"Spends time on what's important; zeros in on critical few; eliminates roadblocks; creates focus.",
+    jp:"重要な少数に集中し、瑣末を手放せる。達成を妨げる障害を取り除き、焦点を絞る。",
+    url:"https://www.notion.so/290cdd87cea08127b076c8f7d04a63bd" },
+  { name:"Time Management",           cat:"Execution",     src:"lominger", s:80,   q1:null, q2:null, q3:null, q4:null,
+    en:"Uses time effectively; concentrates on important priorities; gets more done in less time.",
+    jp:"時間を価値に変える意識がある。優先度に応じて配分し、短時間で成果を出す。",
+    url:"https://www.notion.so/290cdd87cea081fa8da8f466b762ad0e" },
+  { name:"Timely Decision Making",    cat:"Execution",     src:"both",    s:80,   q1:null, q2:null, q3:null, q4:null,
+    en:"Makes decisions timely, sometimes with incomplete information under tight deadlines and pressure.",
+    jp:"期限や不確実さの中でも決められる。完璧な材料を待たず、十分な判断で前に進める。",
+    url:"https://www.notion.so/290cdd87cea08196aec5dc02450a401f" },
+  { name:"Managing & Measuring Work", cat:"Execution",     src:"both",    s:80,   q1:25,   q2:null, q3:null, q4:null,
+    en:"Assigns responsibility clearly; sets objectives and measures; monitors process, progress, and results.",
+    jp:"役割・目標・指標を明確にできる。プロセスと結果を見える化し、フィードバックを組み込む。",
+    url:"https://www.notion.so/290cdd87cea081e29312d6a155737e7a" },
+  { name:"Managing Through Systems",  cat:"Execution",     src:"both",    s:70,   q1:30,   q2:null, q3:null, q4:null,
+    en:"Designs practices that allow managing from a distance; can impact people and results remotely.",
+    jp:"離れた場所からでも成果を出せる仕組みをつくる。個人依存を減らし、ツールで影響力を拡張する。",
+    url:"https://www.notion.so/290cdd87cea081f69589da6b5fca8821" },
+
+  // ── People Leadership & Development ──
+  { name:"Command Skills",            cat:"Leadership",    src:"lominger", s:80,   q1:null, q2:null, q3:null, q4:null,
+    en:"Relishes leading; takes unpopular stands if necessary; is looked to for direction in a crisis.",
+    jp:"リードすることを厭わない。必要なら不人気な立場も取れる。危機のとき頼られる存在になる。",
+    url:"https://www.notion.so/290cdd87cea08103b364d2f1c259f2d8" },
+  { name:"Delegation",                cat:"Leadership",    src:"lominger", s:80,   q1:null, q2:null, q3:null, q4:null,
+    en:"Delegates both routine and important tasks; trusts people to perform; broadly shares accountability.",
+    jp:"任せるべき仕事を見極め、権限を手放せる。責任と裁量をセットで渡し、成長の機会にする。",
+    url:"https://www.notion.so/290cdd87cea0817e9844f8cf227f20d2" },
+  { name:"Building Eff. Teams",       cat:"Leadership",    src:"both",    s:80,   q1:null, q2:null, q3:null, q4:null,
+    en:"Blends people into teams; creates strong morale; shares wins; defines success as team success.",
+    jp:"チームの士気と一体感を高められる。成功を分かち合い、所属感をデザインする。",
+    url:"https://www.notion.so/290cdd87cea081d09352c41868da0c80" },
+  { name:"Hiring and Staffing",       cat:"Leadership",    src:"both",    s:80,   q1:null, q2:null, q3:null, q4:null,
+    en:"Has a nose for talent; hires the best people; not afraid of selecting strong people.",
+    jp:"人材の見極めに強みがある。強い人を選ぶことを恐れず、チームの厚みをつくる。採用は未来への投資。",
+    url:"https://www.notion.so/290cdd87cea0819aa6ffc5bb1d5ed009" },
+  { name:"Directing Others",          cat:"Leadership",    src:"lominger", s:80,   q1:null, q2:null, q3:null, q4:null,
+    en:"Establishes clear directions; distributes workload appropriately; brings out the best in people.",
+    jp:"方向性と優先順位を明確に示せる。双方向の対話で納得感を高め、力を引き出す。",
+    url:"https://www.notion.so/290cdd87cea0819684adc4c3d216ee11" },
+  { name:"Developing Direct Reports", cat:"Leadership",    src:"lominger", s:70,   q1:null, q2:null, q3:null, q4:null,
+    en:"Provides challenging tasks; holds frequent development discussions; constructs development plans.",
+    jp:"メンバーの成長曲線をデザインできる。背伸びできる課題を与え、定期的に対話する。",
+    url:"https://www.notion.so/290cdd87cea081aa829dfcf057b40faf" },
+  { name:"Sizing Up People",          cat:"Leadership",    src:"lominger", s:70,   q1:null, q2:null, q3:null, q4:null,
+    en:"Good judge of talent; can articulate strengths and limitations; projects what people will do.",
+    jp:"人の才能を見抜く目がある。一定期間の観察から、強みと限界を言語化できる。",
+    url:"https://www.notion.so/290cdd87cea08159a8c7e83a09e48d01" },
+  { name:"Motivating Others",         cat:"Leadership",    src:"lominger", s:70,   q1:null, q2:null, q3:null, q4:null,
+    en:"Creates climate in which people want to do their best; empowers others; makes work feel important.",
+    jp:"人が最高のパフォーマンスを出せる環境をつくる。意味づけを大切にし、努力を可視化する。",
+    url:"https://www.notion.so/290cdd87cea08160bb8fcea3c25f8f03" },
+  { name:"Boss Relationships",        cat:"Leadership",    src:"lominger", s:80,   q1:null, q2:null, q3:null, q4:null,
+    en:"Responds well to bosses; open to learning from good coaches; comfortably coachable.",
+    jp:"上司との関係性を学びの機会にできる。コーチングを歓迎し、挑戦の機会を自ら取りにいく。",
+    url:"https://www.notion.so/290cdd87cea0819ea065c6dda95d670c" },
+  { name:"Conflict Management",       cat:"Leadership",    src:"both",    s:80,   q1:null, q2:null, q3:null, q4:null,
+    en:"Steps up to conflicts seeing them as opportunities; settles disputes equitably; finds common ground.",
+    jp:"対立を避けずに建設的に扱える。合意に向けた落としどころを見つけ、関係を損なわず前に進める。",
+    url:"https://www.notion.so/290cdd87cea08178a1f5c444d1ccf042" },
+
+  // ── Interpersonal & Communication Skills ──
+  { name:"Negotiating",               cat:"Interpersonal", src:"both",    s:80,   q1:null, q2:null, q3:null, q4:null,
+    en:"Negotiates skillfully in tough situations; wins concessions without damaging relationships.",
+    jp:"利害が衝突する場でも合意をつくれる。関係性を壊さず、納得のいく着地点を見つける。",
+    url:"https://www.notion.so/290cdd87cea081b895bccf8a1690dc60" },
+  { name:"Listening",                 cat:"Interpersonal", src:"lominger", s:80,   q1:null, q2:null, q3:null, q4:null,
+    en:"Practices attentive active listening; can accurately restate opinions of others even when disagrees.",
+    jp:"相手の話を最後まで丁寧に聴く。意見が違っても正確に受け取り、返せる。",
+    url:"https://www.notion.so/290cdd87cea0812d856cd498c58321ce" },
+  { name:"Humor",                     cat:"Interpersonal", src:"lominger", s:60,   q1:null, q2:null, q3:null, q4:null,
+    en:"Has a constructive sense of humor; can laugh at him/herself; uses humor to ease tension.",
+    jp:"場に合わせてユーモアを使える。緊張をほぐし、関係を前向きにする。",
+    url:"https://www.notion.so/290cdd87cea08165848bfbd2cc34849c" },
+  { name:"Interpersonal Savvy",       cat:"Interpersonal", src:"lominger", s:70,   q1:null, q2:null, q3:null, q4:null,
+    en:"Relates well to all kinds of people; builds rapport; uses diplomacy and tact; diffuses tension.",
+    jp:"立場が違う相手とも関係を築ける。緊張が高い局面でも穏やかに対処できる。橋渡し役になりやすい。",
+    url:"https://www.notion.so/290cdd87cea081b8a549c79623789c65" },
+  { name:"Presentation Skills",       cat:"Interpersonal", src:"both",    s:80,   q1:null, q2:null, q3:null, q4:null,
+    en:"Effective in formal presentation settings; commands attention; can change tactics midstream.",
+    jp:"場や相手に合わせて伝え方を変えられる。注目を集め、議論を進行する。難しい内容もわかりやすく届ける。",
+    url:"https://www.notion.so/290cdd87cea081bfb25be167543c06de" },
+  { name:"Written Communications",    cat:"Interpersonal", src:"lominger", s:70,   q1:null, q2:null, q3:null, q4:null,
+    en:"Writes clearly and succinctly in a variety of settings; gets messages across with desired effect.",
+    jp:"簡潔で伝わる文章が書ける。読み手や場面に合わせてスタイルを調整する。",
+    url:"https://www.notion.so/290cdd87cea08105815df5f092985d25" },
+  { name:"Comfort Around Mgmt",       cat:"Interpersonal", src:"lominger", s:70,   q1:null, q2:null, q3:null, q4:null,
+    en:"Can deal comfortably with senior managers; responds to their needs; crafts appropriate approaches.",
+    jp:"経営層とも落ち着いてやり取りできる。彼らの言語に合わせて要点を伝える。合意形成へのアプローチを選べる。",
+    url:"https://www.notion.so/290cdd87cea081f68bd8f004e90c06cf" },
+  { name:"Approachability",           cat:"Interpersonal", src:"lominger", s:60,   q1:null, q2:null, q3:null, q4:null,
+    en:"Easy to approach and talk to; puts others at ease; builds rapport; good listener.",
+    jp:"話しかけやすい雰囲気をつくれる。相手の緊張に配慮し、安心して相談できる場を整える。",
+    url:"https://www.notion.so/290cdd87cea081e4becac7f58244d5d4" },
+  { name:"Understanding Others",      cat:"Interpersonal", src:"lominger", s:80,   q1:null, q2:null, q3:null, q4:null,
+    en:"Understands why groups do what they do; picks up the group's intentions, needs and motivations.",
+    jp:"集団の空気や動機を素早くつかむ。価値観や欲求を理解し、動かし方を考える。先回りの配慮が得意。",
+    url:"https://www.notion.so/290cdd87cea081589f41c922527cf73e" },
+  { name:"Customer Focus",            cat:"Interpersonal", src:"both",    s:80,   q1:null, q2:null, q3:null, q4:null,
+    en:"Dedicated to meeting customer expectations; gets first-hand info; establishes effective customer relationships.",
+    jp:"顧客の期待を起点に考え、行動に落とし込む。短期満足と長期信頼の両立を意識する。",
+    url:"https://www.notion.so/290cdd87cea081a5b27fe1e8085b80a5" },
+
+  // ── Personal Effectiveness & Self-Management ──
+  { name:"Compassion",                cat:"Personal",      src:"lominger", s:80,   q1:null, q2:null, q3:null, q4:null,
+    en:"Genuinely cares about people; is available and ready to help; is sympathetic to others.",
+    jp:"人そのものへの関心が本物。仕事上の問題にも私生活の悩みにも気を配る。困っている人に手を差し伸べる。",
+    url:"https://www.notion.so/290cdd87cea081b18c38dd9fc7027e97" },
+  { name:"Composure",                 cat:"Personal",      src:"both",    s:70,   q1:null, q2:null, q3:null, q4:null,
+    en:"Is cool under pressure; doesn't become defensive; handles stress; is a settling influence in a crisis.",
+    jp:"プレッシャーの中でも感情をコントロールできる。動揺や防衛的反応を抑え、難局でこそ安定感を発揮する。",
+    url:"https://www.notion.so/290cdd87cea08184a495f5f764057ba9" },
+  { name:"Self-Development",          cat:"Personal",      src:"both",    s:80,   q1:null, q2:null, q3:null, q4:null,
+    en:"Committed to continuously improving; deploys strengths; compensates for weakness and limits.",
+    jp:"自分に投資し続ける姿勢がある。強みを活かしつつ弱みを補う工夫をする。学びのサイクルを止めない。",
+    url:"https://www.notion.so/290cdd87cea0817385c7ddeb744b2e6d" },
+  { name:"Integrity and Trust",       cat:"Personal",      src:"both",    s:80,   q1:null, q2:null, q3:null, q4:null,
+    en:"Widely trusted; presents unvarnished truth; keeps confidences; doesn't misrepresent for personal gain.",
+    jp:"正直さと信頼を大切にする。耳の痛いことも適切に伝え、秘密を守る。ミスを認め、学びに変える。",
+    url:"https://www.notion.so/290cdd87cea081ea9286e56b6bfb5937" },
+  { name:"Patience",                  cat:"Personal",      src:"lominger", s:null, q1:null, q2:null, q3:null, q4:null,
+    en:"Tolerant with people and processes; listens before acting; waits for others to catch up.",
+    jp:"人やプロセスへの宽容さがある。判断の前に十分に聴き、理解しようとする。周囲が追いつくのを待てる。",
+    url:"https://www.notion.so/290cdd87cea0810580aaf9bb2a4aa227" },
+  { name:"Standing Alone",            cat:"Personal",      src:"lominger", s:null, q1:null, q2:null, q3:null, q4:null,
+    en:"Will stand up and be counted; doesn't waver under pressure; willing to be a lone voice.",
+    jp:"孤立しても自分の立場を守れる。圧力に屈せず、信じる意見を一人でも主張できる。",
+    url:"https://www.notion.so/290cdd87cea08140a178dbf2cd3fe481" },
+  { name:"Managerial Courage",        cat:"Personal",      src:"both",    s:null, q1:null, q2:null, q3:null, q4:null,
+    en:"Doesn't hold back; provides direct, complete feedback; lets people know where they stand.",
+    jp:"言うべきことを言える勇気がある。フィードバックを直接的かつ建設的に届ける。",
+    url:"https://www.notion.so/290cdd87cea081a3826ff88fb7ff0e51" },
+  { name:"Self-Knowledge",            cat:"Personal",      src:"lominger", s:80,   q1:null, q2:null, q3:null, q4:null,
+    en:"Knows personal strengths, weaknesses, limits; seeks feedback; gains insights from mistakes.",
+    jp:"自分の強み・弱み・限界を客観視できる。防衛的になりにくく、対話を歓迎する。",
+    url:"https://www.notion.so/290cdd87cea081ec8e62faa0ce64e469" },
+  { name:"Personal Disclosure",       cat:"Personal",      src:"lominger", s:80,   q1:null, q2:null, q3:null, q4:null,
+    en:"Shares thoughts about personal strengths and weaknesses; admits mistakes; easy to get to know.",
+    jp:"自分の強みや弱み、価値観を適度に開示できる。失敗を共有し、近づきやすい印象をつくる。",
+    url:"https://www.notion.so/290cdd87cea081dfac86d0b5706bb25e" },
+  { name:"Personal Learning",         cat:"Personal",      src:"lominger", s:80,   q1:null, q2:null, q3:null, q4:null,
+    en:"Picks up on need to change behavior quickly; adjusts based on reactions; seeks feedback.",
+    jp:"自分の振る舞いを観察し、すぐに修正できる。反応を手がかりに仮説を立て、行動を変える。",
+    url:"https://www.notion.so/290cdd87cea081dfbd47ec08b4788f7e" },
+
+  // ── Strategic Thinking & Business Acumen ──
+  { name:"Creativity",                cat:"Strategic",     src:"both",    s:70,   q1:null, q2:null, q3:null, q4:null,
+    en:"Comes up with unique ideas; makes connections among unrelated notions; seen as original.",
+    jp:"既存の枠にとらわれず発想できる。離れた点をつなげ、新しい価値を生む。アイデア出しの場で存在感を発揮。",
+    url:"https://www.notion.so/290cdd87cea081948643fe5d241baa29" },
+  { name:"Perspective",               cat:"Strategic",     src:"lominger", s:70,   q1:null, q2:null, q3:null, q4:null,
+    en:"Looks toward broadest possible view; can discuss multiple aspects and future scenarios.",
+    jp:"最も広い視点でイシューを捉える。グローバルに考え、複数の側面と将来への影響を語れる。",
+    url:"https://www.notion.so/290cdd87cea081c79b68c057e181f521" },
+  { name:"Innovation Management",     cat:"Strategic",     src:"both",    s:60,   q1:null, q2:null, q3:null, q4:null,
+    en:"Brings creative ideas to market; judges which ideas will work; facilitates effective brainstorming.",
+    jp:"アイデアを市場価値に変える視点がある。どれが効くかを見極め、創造プロセスを前に進める。",
+    url:"https://www.notion.so/290cdd87cea081c0b065e70f03362158" },
+  { name:"Strategic Agility",         cat:"Strategic",     src:"both",    s:70,   q1:null, q2:null, q3:null, q4:null,
+    en:"Sees ahead clearly; anticipates future trends accurately; can create competitive breakthrough strategies.",
+    jp:"先を読み、潮目の変化を見抜ける。突破口となる戦略をつくる。具体的な打ち手に落とし込める。",
+    url:"https://www.notion.so/290cdd87cea0816a94e2d5080bdfec19" },
+  { name:"Political Savvy",           cat:"Strategic",     src:"lominger", s:70,   q1:null, q2:null, q3:null, q4:null,
+    en:"Maneuvers through complex political situations; anticipates where the land mines are.",
+    jp:"複雑な利害関係の間を静かに動ける。地雷を予測し、事前に調整する。水面下の合意形成が得意。",
+    url:"https://www.notion.so/290cdd87cea0818ba388e4731cee873a" },
+  { name:"Organizational Agility",    cat:"Strategic",     src:"both",    s:70,   q1:null, q2:null, q3:null, q4:null,
+    en:"Knows how to get things done through formal and informal channels; understands organizational culture.",
+    jp:"公式・非公式の流れを理解して動ける。障害を予測して先回りする。組織の文脈に合わせて通し方を選べる。",
+    url:"https://www.notion.so/290cdd87cea081d68385f166976e0a57" },
+  { name:"TQM / Re-Engineering",      cat:"Strategic",     src:"lominger", s:80,   q1:null, q2:null, q3:null, q4:null,
+    en:"Committed to highest quality; continuous improvement through data; willing to re-engineer from scratch.",
+    jp:"品質と顧客価値にこだわる。データに基づき改善を続け、必要ならゼロベースで作り直す。",
+    url:"https://www.notion.so/290cdd87cea081cbb261d9b729d008fb" },
+  { name:"Business Acumen",           cat:"Strategic",     src:"lominger", s:70,   q1:null, q2:null, q3:null, q4:null,
+    en:"Knows how businesses work; knowledgeable about trends, the competition, and marketplace strategies.",
+    jp:"ビジネスの仕組みと市場の動きを結びつけて考える。自社のポジションや競合の動きを理解し行動する。",
+    url:"https://www.notion.so/290cdd87cea08171ba11db37c1034319" },
+  { name:"Decision Quality",          cat:"Strategic",     src:"both",    s:70,   q1:null, q2:null, q3:null, q4:null,
+    en:"Makes good decisions based on analysis, wisdom, and experience; sought out for advice.",
+    jp:"分析・経験・直感を統合して判断できる。長期的に見て妥当な選択を穏み重ねる。周囲から相談されやすい。",
+    url:"https://www.notion.so/290cdd87cea081198ea9d56bba60c5b6" },
+
+  // ── Cognitive & Learning Agility ──
+  { name:"Intellectual Horsepower",   cat:"Cognitive",     src:"both",    s:null, q1:null, q2:null, q3:null, q4:null,
+    en:"Is bright and intelligent; deals with concepts and complexity comfortably; intellectually sharp and agile.",
+    jp:"知的な処理能力が高い。複雑な概念もすっきり整理できる。鋭く、素早く、柔軟な思考が特徴。",
+    url:"https://www.notion.so/290cdd87cea081a78bfedaffec18104b" },
+  { name:"Dealing w/ Ambiguity",      cat:"Cognitive",     src:"both",    s:null, q1:null, q2:null, q3:null, q4:null,
+    en:"Can cope with change; can decide and act without total picture; isn't upset when things are up in the air.",
+    jp:"変化に対応し、不完全な情報の中でも決断できる。曖昧さを受け入れ、行動に移せる。",
+    url:"https://www.notion.so/290cdd87cea081429174f43f086bcf97" },
+  { name:"Problem Solving",           cat:"Cognitive",     src:"both",    s:null, q1:null, q2:null, q3:null, q4:null,
+    en:"Uses rigorous logic to solve difficult problems; probes all sources; excellent at honest analysis.",
+    jp:"論理的に問題を解き、有効な解を導く。真因を探り、隠れた問題も見抜く。誠実な分析力がある。",
+    url:"https://www.notion.so/290cdd87cea081458924dccfa81b7ff5" },
+  { name:"Technical Learning",        cat:"Cognitive",     src:"both",    s:null, q1:null, q2:null, q3:null, q4:null,
+    en:"Picks up on technical things quickly; good at learning new industry, product, or technical knowledge.",
+    jp:"新しい技術を素早く習得できる。業界・製品・技術知識を継続的にアップデートする。学習速度が競争力。",
+    url:"https://www.notion.so/290cdd87cea0813c98bfc3065fb0f5c5" },
+  { name:"Functional/Tech Skills",    cat:"Cognitive",     src:"both",    s:null, q1:null, q2:null, q3:null, q4:null,
+    en:"Has functional and technical knowledge at a high level; demonstrates active interest in acquiring new knowledge.",
+    jp:"職能上の技術・知識を高いレベルで保有する。常に新しい技術知識を穏極的に学ぼうとする姿勢がある。",
+    url:"https://www.notion.so/290cdd87cea081d2bb49d0bb522e8909" },
+  { name:"Learning on the Fly",       cat:"Cognitive",     src:"both",    s:80,   q1:80,   q2:null, q3:null, q4:null,
+    en:"Learns quickly when facing new problems; relentless and versatile learner; open to change.",
+    jp:"未知の課題を学びながら進められる。成功と失敗の両方から素早く学ぶ。変化を楽しめる。",
+    url:"https://www.notion.so/290cdd87cea081bab042e3a43bb1ec52" },
+  { name:"Career Ambition",           cat:"Cognitive",     src:"lominger", s:70,   q1:30,   q2:null, q3:null, q4:null,
+    en:"Knows what he/she wants from a career; makes things happen; markets self for opportunities.",
+    jp:"自分のキャリアの方向性を自覚している。チャンスを待たずに動き、機会をデザインする。",
+    url:"https://www.notion.so/290cdd87cea081e08c19e885c48deb6f" },
+
+  // ── Original ──
+  { name:"Health",                    cat:"Original",      src:"ppt",     s:80,   q1:65,   q2:null, q3:null, q4:null,
+    en:"Physical and mental health as the foundation of performance and everything else.",
+    jp:"健康は全ての土台である。頭と身体の健康維持のために身体づくり、食事に気を遣っている。",
+    url:"https://www.notion.so/290cdd87cea080549260ef242c62d5dc" },
+];
+
+/* ════ UTILITIES ════ */
+const scoreColor = s =>
+  s === null ? 'var(--s-nil)' : s >= 80 ? 'var(--s-hi)' : s >= 70 ? 'var(--s-mid)' : 'var(--s-lo)';
+const srcLabel = s =>
+  s==='ppt' ? ['PPT','src-ppt'] : s==='lominger' ? ['Lominger','src-lom'] : ['両方','src-both'];
+
+/* ════ KPI ════ */
 document.getElementById('hdrLast').textContent = '最終更新: ' + PROFILE.lastUpdated;
 document.getElementById('hdrNext').textContent = '次回レビュー: ' + PROFILE.nextReview;
 
-const scoreColor = s => !s ? '#4a5568' : s>=80 ? '#48bb78' : s>=70 ? '#f6ad55' : '#fc8181';
-
-const scored = COMPETENCIES.filter(c=>c.s_2025_10!==null);
-const avg = scored.length ? Math.round(scored.reduce((a,c)=>a+c.s_2025_10,0)/scored.length) : 0;
-document.getElementById('kpiScored').textContent = scored.length;
+const scored = COMPETENCIES.filter(c => c.s !== null);
+const avg    = scored.length ? Math.round(scored.reduce((a,c)=>a+c.s,0)/scored.length) : 0;
+document.getElementById('kpiScored').textContent    = scored.length;
 document.getElementById('kpiScoredSub').textContent = `全${COMPETENCIES.length}中`;
-document.getElementById('kpiAvg').textContent = avg;
+document.getElementById('kpiAvg').textContent       = avg;
 
 const catScores = {};
-Object.keys(CATEGORIES).forEach(k=>{
-  const sc = COMPETENCIES.filter(c=>c.cat===k&&c.s_2025_10!==null);
-  catScores[k] = sc.length ? Math.round(sc.reduce((a,c)=>a+c.s_2025_10,0)/sc.length) : null;
+Object.keys(CATEGORIES).forEach(k => {
+  const sc = COMPETENCIES.filter(c=>c.cat===k && c.s!==null);
+  catScores[k] = sc.length ? Math.round(sc.reduce((a,c)=>a+c.s,0)/sc.length) : null;
 });
-const validCats = Object.entries(catScores).filter(([,v])=>v!==null).sort((a,b)=>b[1]-a[1]);
-if(validCats.length){
-  document.getElementById('kpiTop').textContent = CATEGORIES[validCats[0][0]].label;
-  document.getElementById('kpiTopSc').textContent = `avg ${validCats[0][1]}`;
-  document.getElementById('kpiLow').textContent = CATEGORIES[validCats.at(-1)[0]].label;
-  document.getElementById('kpiLowSc').textContent = `avg ${validCats.at(-1)[1]}`;
+const valid = Object.entries(catScores).filter(([,v])=>v!==null).sort((a,b)=>b[1]-a[1]);
+if(valid.length){
+  document.getElementById('kpiTop').textContent   = CATEGORIES[valid[0][0]].label;
+  document.getElementById('kpiTopSc').textContent = `avg ${valid[0][1]}`;
+  document.getElementById('kpiLow').textContent   = CATEGORIES[valid.at(-1)[0]].label;
+  document.getElementById('kpiLowSc').textContent = `avg ${valid.at(-1)[1]}`;
 }
 
-// ── Category bars ──────────────────────────────────────────
+/* ════ Category Bars ════ */
 const barsEl = document.getElementById('catBars');
-Object.entries(CATEGORIES).forEach(([k,cfg])=>{
-  const sc = catScores[k];
-  barsEl.innerHTML += `<div class="cat-row">
-    <div class="cat-name">${cfg.label}</div>
-    <div class="bar-track"><div class="bar-fill" style="width:${sc||0}%;background:${cfg.color}"></div></div>
-    <div class="cat-score" style="color:${cfg.color}">${sc??'—'}</div>
-  </div>`;
+Object.entries(CATEGORIES).forEach(([k, cfg]) => {
+  const sc    = catScores[k];
+  const total  = COMPETENCIES.filter(c=>c.cat===k).length;
+  const nScored= COMPETENCIES.filter(c=>c.cat===k && c.s!==null).length;
+  barsEl.innerHTML += `
+    <div class="cat-bar-row">
+      <div class="cat-bar-lbl">${cfg.icon} ${cfg.label} <span class="cat-bar-cnt">(${nScored}/${total})</span></div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${sc||0}%;background:${cfg.color}">
+          ${sc ? `<span class="bar-fill-txt">${sc}</span>` : ''}
+        </div>
+      </div>
+      <div class="cat-score" style="color:${cfg.color}">${sc??'—'}</div>
+    </div>`;
 });
 
-// ── Radar ──────────────────────────────────────────────────
-new Chart(document.getElementById('radarChart'),{
-  type:'radar',
-  data:{
-    labels: Object.values(CATEGORIES).map(c=>c.label.split(' ').slice(0,2).join('\n')),
-    datasets:[{
-      label:'2025.10', data: Object.keys(CATEGORIES).map(k=>catScores[k]||0),
-      backgroundColor:'rgba(108,123,255,0.15)', borderColor:'#6c7bff', borderWidth:2,
-      pointBackgroundColor: Object.values(CATEGORIES).map(c=>c.color), pointRadius:5,
+/* ════ Radar ════ */
+new Chart(document.getElementById('radarChart'), {
+  type: 'radar',
+  data: {
+    labels: Object.values(CATEGORIES).map(c=>c.label.replace(' & ',' &\n')),
+    datasets: [{
+      label: '2025.10',
+      data: Object.keys(CATEGORIES).map(k=>catScores[k]||0),
+      backgroundColor: 'rgba(0,89,179,0.10)',
+      borderColor: '#0059B3',
+      borderWidth: 2,
+      pointBackgroundColor: Object.values(CATEGORIES).map(c=>c.color),
+      pointRadius: 5, pointBorderColor: '#fff', pointBorderWidth: 2,
     }]
   },
-  options:{
-    responsive:true,
-    scales:{r:{min:0,max:100,ticks:{stepSize:20,color:'#718096',backdropColor:'transparent',font:{size:9}},
-      grid:{color:'#2d3148'},angleLines:{color:'#2d3148'},pointLabels:{color:'#e2e8f0',font:{size:9}}}},
-    plugins:{legend:{display:false}}
+  options: {
+    responsive: true,
+    scales: {
+      r: {
+        min:0, max:100,
+        ticks: { stepSize:20, color:'#3A5878', backdropColor:'transparent', font:{size:9} },
+        grid: { color:'#C3D9F0' },
+        angleLines: { color:'#C3D9F0' },
+        pointLabels: { color:'#142540', font:{size:9} }
+      }
+    },
+    plugins: { legend: { display:false } }
   }
 });
 
-// ── Trend ──────────────────────────────────────────────────
-const tKeys = ['s_2025_10','q1','q2','q3','q4'];
+/* ════ Trend ════ */
+const tKeys   = ['s','q1','q2','q3','q4'];
 const tLabels = ['2025.10','2026 Q1','2026 Q2','2026 Q3','2026 Q4'];
-new Chart(document.getElementById('trendChart'),{
-  type:'line',
-  data:{
-    labels:tLabels,
+new Chart(document.getElementById('trendChart'), {
+  type: 'line',
+  data: {
+    labels: tLabels,
     datasets: Object.keys(CATEGORIES).map((k,i)=>({
-      label:CATEGORIES[k].label,
-      data:tKeys.map(tk=>{const s=COMPETENCIES.filter(c=>c.cat===k&&c[tk]!==null);return s.length?Math.round(s.reduce((a,c)=>a+c[tk],0)/s.length):null}),
-      borderColor:Object.values(CATEGORIES)[i].color,
-      backgroundColor:Object.values(CATEGORIES)[i].color+'33',
-      borderWidth:2,pointRadius:4,tension:0.3,spanGaps:false,
+      label: CATEGORIES[k].label,
+      data: tKeys.map(tk=>{
+        const s=COMPETENCIES.filter(c=>c.cat===k && c[tk]!==null);
+        return s.length ? Math.round(s.reduce((a,c)=>a+c[tk],0)/s.length) : null;
+      }),
+      borderColor: Object.values(CATEGORIES)[i].color,
+      backgroundColor: Object.values(CATEGORIES)[i].color+'22',
+      borderWidth:2, pointRadius:4, tension:.3, spanGaps:false,
     }))
   },
-  options:{
-    responsive:true,interaction:{mode:'index',intersect:false},
-    scales:{y:{min:0,max:100,grid:{color:'#2d3148'},ticks:{color:'#718096',stepSize:20}},x:{grid:{color:'#2d3148'},ticks:{color:'#718096'}}},
-    plugins:{legend:{labels:{color:'#e2e8f0',font:{size:10},boxWidth:10,padding:12}},tooltip:{backgroundColor:'#1a1d27',titleColor:'#e2e8f0',bodyColor:'#a0aec0',borderColor:'#2d3148',borderWidth:1}}
+  options: {
+    responsive:true,
+    interaction:{ mode:'index', intersect:false },
+    scales:{
+      y:{ min:0, max:100, grid:{color:'#C3D9F0'}, ticks:{color:'#3A5878', stepSize:20} },
+      x:{ grid:{color:'#C3D9F0'}, ticks:{color:'#3A5878'} }
+    },
+    plugins:{
+      legend:{ labels:{ color:'#142540', font:{size:10}, boxWidth:10, padding:10 } },
+      tooltip:{ backgroundColor:'#003D8F', titleColor:'#fff', bodyColor:'#C3D9F0' }
+    }
   }
 });
 
-// ── Comp cards ─────────────────────────────────────────────
-const grid = document.getElementById('compGrid');
-const srcLabel = s => s==='ppt'?['PPT','src-ppt']:s==='lominger'?['Lominger','src-lom']:['両方','src-both'];
+/* ════ Competency Cards (grouped by category) ════ */
+const sectionsEl = document.getElementById('compSections');
 
-COMPETENCIES.forEach((c,i)=>{
-  const [sl,sc] = srcLabel(c.src);
-  const s = c.s_2025_10;
-  const col = scoreColor(s);
-  const qs = [c.q1,c.q2,c.q3,c.q4];
-  const div = document.createElement('div');
-  div.className = 'comp-card' + (c.nextAction?'has-note':'');
-  div.dataset.idx = i;
-  div.innerHTML = `
-    <div class="comp-top">
-      <div class="comp-name">${c.name}</div>
-      <span class="comp-src ${sc}">${sl}</span>
+Object.keys(CATEGORIES).forEach(catKey => {
+  const cfg     = CATEGORIES[catKey];
+  const catItems= COMPETENCIES.filter(c=>c.cat===catKey);
+  if(!catItems.length) return;
+
+  const catAvg  = catScores[catKey];
+  const nSc     = catItems.filter(c=>c.s!==null).length;
+
+  const sec = document.createElement('div');
+  sec.className = 'comp-section';
+  sec.innerHTML = `
+    <div class="cat-header" style="background:${cfg.color}">
+      <span class="cat-header-icon">${cfg.icon}</span>
+      <span class="cat-header-name">${cfg.label}</span>
+      <span class="cat-header-count">${catItems.length} items</span>
+      <span class="cat-header-avg">avg ${catAvg??'—'} ｜ ${nSc}/${catItems.length} 採点済み</span>
     </div>
-    <div class="comp-cat">${CATEGORIES[c.cat]?.label}</div>
-    <div class="score-row">
-      <div class="score-track"><div class="score-fill" style="width:${s||0}%;background:${col}"></div></div>
-      <div class="score-num" style="color:${col}">${s??'—'}</div>
-    </div>
-    <div class="q-dots">
-      ${qs.map((q,qi)=>`<div class="q-dot ${q!==null?'scored':'empty'}" title="2026 Q${qi+1}: ${q??'未採点'}">${q??`Q${qi+1}`}</div>`).join('')}
-    </div>`;
-  div.addEventListener('click',()=>openDrawer(i,div));
-  grid.appendChild(div);
+    <div class="comp-grid" id="grid-${catKey}"></div>`;
+  sectionsEl.appendChild(sec);
+
+  const grid = document.getElementById(`grid-${catKey}`);
+  catItems.forEach(c => {
+    const gIdx  = COMPETENCIES.indexOf(c);
+    const [sl,sc]= srcLabel(c.src);
+    const col   = scoreColor(c.s);
+    const qs    = [c.q1,c.q2,c.q3,c.q4];
+    const div   = document.createElement('div');
+    div.className = 'comp-card';
+    div.dataset.idx = gIdx;
+    div.innerHTML = `
+      <div class="comp-top">
+        <div class="comp-name">${c.name}</div>
+        <span class="src-badge ${sc}">${sl}</span>
+      </div>
+      <div class="score-row">
+        <div class="score-track"><div class="score-fill" style="width:${c.s||0}%;background:${col}"></div></div>
+        <div class="score-num" style="color:${col}">${c.s??'—'}</div>
+      </div>
+      <div class="q-dots">
+        ${qs.map((q,qi)=>`<div class="q-dot ${q!==null?'on':'off'}" title="2026 Q${qi+1}: ${q??'未採点'}"></div>`).join('')}
+      </div>`;
+    div.addEventListener('click', ()=>openDrawer(gIdx, div));
+    grid.appendChild(div);
+  });
 });
 
-// ── Drawer ─────────────────────────────────────────────────
-let activeCard = null;
-let activeIdx = null;
+/* ════ Drawer ════ */
+let activeCard = null, activeIdx = null;
 
-function openDrawer(idx, cardEl){
-  if(activeCard){ activeCard.classList.remove('active'); }
-  if(activeIdx===idx){ closeDrawer(); return; }
+function openDrawer(idx, cardEl) {
+  if(activeCard) activeCard.classList.remove('active');
+  if(activeIdx === idx) { closeDrawer(); return; }
   activeCard = cardEl; activeIdx = idx;
   cardEl.classList.add('active');
 
-  const c = COMPETENCIES[idx];
-  const s = c.s_2025_10;
-  const col = scoreColor(s);
-  const [sl,sc] = srcLabel(c.src);
+  const c   = COMPETENCIES[idx];
+  const col = scoreColor(c.s);
+  const [sl, sc] = srcLabel(c.src);
 
-  document.getElementById('dName').textContent = c.name;
-  document.getElementById('dCat').textContent = CATEGORIES[c.cat]?.label + ' ｜ ' + sl;
-  const circle = document.getElementById('dScoreCircle');
-  circle.textContent = s??'—';
-  circle.style.borderColor = col; circle.style.color = col;
-  document.getElementById('dScoreLabel').textContent = s ? `${s} 点` : '未採点';
-  document.getElementById('dSrcBadge').innerHTML = `<span class="comp-src ${sc}" style="margin-top:4px">${sl}</span>`;
+  document.getElementById('dName').textContent  = c.name;
+  document.getElementById('dCat').textContent   = CATEGORIES[c.cat]?.label + ' ｜ ' + sl;
+  const circ = document.getElementById('dCircle');
+  circ.textContent    = c.s??'—';
+  circ.style.borderColor = col;
+  circ.style.color       = col;
+  document.getElementById('dScoreLbl').textContent = c.s ? `${c.s} 点` : '未採点';
+  document.getElementById('dSrcBadge').innerHTML   = `<span class="src-badge ${sc}">${sl}</span>`;
   document.getElementById('dEn').textContent = c.en || '（説明未登録）';
   document.getElementById('dJp').textContent = c.jp || '（日本語訳未登録）';
 
-  const hist = [
-    {period:'2025.10', val:c.s_2025_10},
-    {period:'2026 Q1', val:c.q1},
-    {period:'2026 Q2', val:c.q2},
-    {period:'2026 Q3', val:c.q3},
-    {period:'2026 Q4', val:c.q4},
-  ];
-  document.getElementById('dHistory').innerHTML = hist.map(h=>`
-    <div class="q-hist-item">
-      <div class="q-period">${h.period}</div>
-      <div class="q-val" style="color:${scoreColor(h.val)}">${h.val??'—'}</div>
+  document.getElementById('dHist').innerHTML = [
+    {p:'2025.10',v:c.s},{p:'2026 Q1',v:c.q1},{p:'2026 Q2',v:c.q2},{p:'2026 Q3',v:c.q3},{p:'2026 Q4',v:c.q4}
+  ].map(h=>`
+    <div class="d-hist-item">
+      <div class="d-hist-period">${h.p}</div>
+      <div class="d-hist-val" style="color:${scoreColor(h.v)}">${h.v??'—'}</div>
     </div>`).join('');
 
-  const ta = document.getElementById('dNextAction');
+  const ta = document.getElementById('dTA');
   ta.value = c.nextAction || '';
   ta.oninput = ()=>{ COMPETENCIES[idx].nextAction = ta.value; };
 
-  document.getElementById('dNotionLink').innerHTML = c.notionUrl
-    ? `<a class="notion-link" href="${c.notionUrl}" target="_blank">🔗 Notion で開く</a>`
-    : '';
+  document.getElementById('dLink').innerHTML = c.url
+    ? `<a class="d-link" href="${c.url}" target="_blank">🔗 Notion で開く</a>` : '';
 
-  document.getElementById('drawer').classList.remove('closed');
-  cardEl.scrollIntoView({behavior:'smooth',block:'nearest'});
+  document.getElementById('drawer').classList.add('open');
+  document.getElementById('overlay').classList.add('open');
+  cardEl.scrollIntoView({ behavior:'smooth', block:'nearest' });
 }
 
-function closeDrawer(){
-  document.getElementById('drawer').classList.add('closed');
+function closeDrawer() {
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('overlay').classList.remove('open');
   if(activeCard) activeCard.classList.remove('active');
   activeCard = null; activeIdx = null;
 }
