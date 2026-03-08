@@ -350,10 +350,12 @@ fetch('data.json')
     COMPETENCIES = data.competencies;
     initDashboard();
   })
-  .catch(err => {
-    document.getElementById('compSections').innerHTML =
-      '<div style="padding:40px;text-align:center;color:#c00;font-size:14px">' +
-      '⚠ データの読み込みに失敗しました<br><small>' + err.message + '</small></div>';
+        .catch((err) => {
+          console.error("Load error:", err);
+          document.getElementById("compSections").innerHTML =
+            `<div style="padding:40px;text-align:center;color:#c00;font-size:14px">
+      ⚠ Failed to load data<br><small>${err.message}</small>
+    </div>`;
   });
 
 /* ════ UTILITIES ════ */
@@ -584,3 +586,4 @@ function closeDrawer() {
 </script>
 </body>
 </html>
+
