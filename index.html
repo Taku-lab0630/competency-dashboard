@@ -225,10 +225,61 @@
       font-family: inherit;
     }
 
+    /* ── Sparkline ── */
+    .spark-wrap { margin-top: 5px; }
+    .spark-label-row { display:flex; justify-content:space-between; font-size:9px; color:var(--text-light); margin-top:1px; }
+    .spark-trend-up   { color: var(--tc-blue); }
+    .spark-trend-down { color: #E65100; }
+    .spark-trend-flat { color: var(--text-light); }
+
+    /* ── Analysis Section ── */
+    .analysis-card { margin-bottom: 16px; }
+    .analysis-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .analysis-col { border-radius: 5px; overflow: hidden; }
+    .analysis-col-hdr {
+      padding: 8px 12px; font-size: 11px; font-weight: 700; color: #fff; display:flex; align-items:center; gap:6px;
+    }
+    .analysis-col-body { padding: 8px; background: #fff; border: 1px solid var(--tc-border); border-top: none; border-radius: 0 0 5px 5px; }
+    .analysis-item {
+      padding: 6px 8px; border-radius: 4px; margin-bottom: 5px;
+      border-left: 3px solid transparent; background: var(--bg); cursor: pointer;
+    }
+    .analysis-item:hover { background: var(--tc-pale); }
+    .analysis-item-name { font-size: 11px; font-weight: 700; color: var(--text-dark); }
+    .analysis-item-delta { font-size: 10px; font-weight: 600; margin-left:4px; }
+    .analysis-item-note { font-size: 10px; color: var(--text-mid); margin-top: 2px; line-height: 1.4; }
+    .growth-col .analysis-col-hdr  { background: #0059B3; }
+    .growth-col .analysis-item     { border-left-color: #0059B3; }
+    .improve-col .analysis-col-hdr { background: #E65100; }
+    .improve-col .analysis-item    { border-left-color: #E65100; }
+    .stagnant-col .analysis-col-hdr{ background: #546E7A; }
+    .stagnant-col .analysis-item   { border-left-color: #546E7A; }
+
+    /* ── Todo Section ── */
+    .todo-section { background: var(--tc-pale); border-radius: 5px; padding: 10px 12px; }
+    .todo-hdr { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--tc-navy); margin-bottom: 8px; }
+    .todo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 8px; }
+    .todo-item {
+      background: #fff; border-radius: 4px; padding: 7px 10px;
+      border-left: 3px solid var(--tc-blue);
+      font-size: 11px; color: var(--text-dark); line-height: 1.5;
+    }
+    .todo-item-src { font-size: 9px; color: var(--text-light); margin-top: 2px; }
+
+    /* ── Drawer sparkline ── */
+    .d-spark-wrap { margin: 6px 0; background: var(--bg); padding: 8px; border-radius: 4px; }
+    .d-spark-labels { display:flex; justify-content:space-between; font-size:9px; color:var(--text-light); margin-top:2px; }
+
     @media (max-width: 900px) {
       .kpi-row { grid-template-columns: repeat(2,1fr); }
       .charts-row { grid-template-columns: 1fr; }
       .drawer { width: 100%; }
+      .analysis-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -290,6 +341,16 @@
     <canvas id="trendChart" style="max-height:190px"></canvas>
   </div>
 
+  <!-- ══ Analysis Section ══ -->
+  <div class="card analysis-card">
+    <div class="card-title">📊 コンピテンシー分析 ─ 2025.10 → 2026.Q1 レビュー</div>
+    <div class="analysis-grid" id="analysisGrid"></div>
+    <div class="todo-section">
+      <div class="todo-hdr">📋 ToDo リスト（コメントより抽出）</div>
+      <div class="todo-grid" id="todoGrid"></div>
+    </div>
+  </div>
+
   <!-- ══ Legend ══ -->
   <div class="section-legend">
     <span style="font-size:12px;font-weight:700;color:var(--text-dark)">コンピテンシー一覧（カテゴリ別）</span>
@@ -326,6 +387,8 @@
     <div class="d-text" id="dEn">—</div>
     <div class="d-sec">内省的解釈（日本語）</div>
     <div class="d-text" id="dJp">—</div>
+    <div class="d-sec">スコア推移トレンド</div>
+    <div id="dSparkEl" class="d-spark-wrap"></div>
     <div class="d-sec">スコア履歴</div>
     <div class="d-hist" id="dHist"></div>
     <div class="d-sec" id="dLookBackSec" style="display:none">Look Back（振り返り）</div>
@@ -350,12 +413,10 @@ fetch('data.json')
     COMPETENCIES = data.competencies;
     initDashboard();
   })
-        .catch((err) => {
-          console.error("Load error:", err);
-          document.getElementById("compSections").innerHTML =
-            `<div style="padding:40px;text-align:center;color:#c00;font-size:14px">
-      ⚠ Failed to load data<br><small>${err.message}</small>
-    </div>`;
+  .catch(err => {
+    document.getElementById('compSections').innerHTML =
+      '<div style="padding:40px;text-align:center;color:#c00;font-size:14px">' +
+      '⚠ データの読み込みに失敗しました<br><small>' + err.message + '</small></div>';
   });
 
 /* ════ UTILITIES ════ */
@@ -437,29 +498,32 @@ new Chart(document.getElementById('radarChart'), {
   }
 });
 
-/* ════ Trend ════ */
+/* ════ Trend (Category avg, auto Y-axis) ════ */
 const tKeys   = ['s','q1','q2','q3','q4'];
 const tLabels = ['2025.10','2026 Q1','2026 Q2','2026 Q3','2026 Q4'];
+const catDatasets = Object.keys(CATEGORIES).map((k,i)=>({
+  label: CATEGORIES[k].label,
+  data: tKeys.map(tk=>{
+    const s=COMPETENCIES.filter(c=>c.cat===k && c[tk]!==null);
+    return s.length ? Math.round(s.reduce((a,c)=>a+c[tk],0)/s.length) : null;
+  }),
+  borderColor: Object.values(CATEGORIES)[i].color,
+  backgroundColor: Object.values(CATEGORIES)[i].color+'22',
+  borderWidth:2, pointRadius:4, tension:.3, spanGaps:false,
+}));
+// Auto Y-axis: find min/max of all non-null data
+const allTrendVals = catDatasets.flatMap(d=>d.data.filter(v=>v!==null));
+const tMin = allTrendVals.length ? Math.max(0, Math.floor(Math.min(...allTrendVals)/5)*5 - 5) : 0;
+const tMax = allTrendVals.length ? Math.min(100, Math.ceil(Math.max(...allTrendVals)/5)*5 + 5) : 100;
+
 new Chart(document.getElementById('trendChart'), {
   type: 'line',
-  data: {
-    labels: tLabels,
-    datasets: Object.keys(CATEGORIES).map((k,i)=>({
-      label: CATEGORIES[k].label,
-      data: tKeys.map(tk=>{
-        const s=COMPETENCIES.filter(c=>c.cat===k && c[tk]!==null);
-        return s.length ? Math.round(s.reduce((a,c)=>a+c[tk],0)/s.length) : null;
-      }),
-      borderColor: Object.values(CATEGORIES)[i].color,
-      backgroundColor: Object.values(CATEGORIES)[i].color+'22',
-      borderWidth:2, pointRadius:4, tension:.3, spanGaps:false,
-    }))
-  },
+  data: { labels: tLabels, datasets: catDatasets },
   options: {
     responsive:true,
     interaction:{ mode:'index', intersect:false },
     scales:{
-      y:{ min:0, max:100, grid:{color:'#C3D9F0'}, ticks:{color:'#3A5878', stepSize:20} },
+      y:{ min:tMin, max:tMax, grid:{color:'#C3D9F0'}, ticks:{color:'#3A5878', stepSize:5} },
       x:{ grid:{color:'#C3D9F0'}, ticks:{color:'#3A5878'} }
     },
     plugins:{
@@ -468,6 +532,126 @@ new Chart(document.getElementById('trendChart'), {
     }
   }
 });
+
+/* ════ Sparkline helper ════ */
+function makeSpark(c, width=88, height=28) {
+  const raw = [{l:'10',v:c.s},{l:'Q1',v:c.q1},{l:'Q2',v:c.q2},{l:'Q3',v:c.q3},{l:'Q4',v:c.q4}];
+  const pts = raw.filter(p=>p.v!==null);
+  if(pts.length < 1) return '<div class="spark-wrap" style="height:34px"></div>';
+  const vals = pts.map(p=>p.v);
+  const minV = Math.max(0, Math.min(...vals) - 8);
+  const maxV = Math.min(100, Math.max(...vals) + 8);
+  const W=width, H=height;
+  const xOf = i => pts.length===1 ? W/2 : (i/(pts.length-1))*W;
+  const yOf = v => H - ((v-minV)/(maxV-minV||1))*H;
+  const trend = pts.length>1 ? (pts.at(-1).v - pts[0].v) : 0;
+  const strokeCol = trend>0?'#0059B3':trend<0?'#E65100':'#90A4AE';
+  let path='', dots='';
+  pts.forEach((p,i)=>{
+    path += (i===0?'M':'L')+' '+xOf(i).toFixed(1)+' '+yOf(p.v).toFixed(1)+' ';
+    dots += `<circle cx="${xOf(i).toFixed(1)}" cy="${yOf(p.v).toFixed(1)}" r="2.8" fill="${scoreColor(p.v)}" stroke="#fff" stroke-width="1"/>`;
+  });
+  const trendArrow = trend>0?'▲':trend<0?'▼':'─';
+  const trendCls   = trend>0?'spark-trend-up':trend<0?'spark-trend-down':'spark-trend-flat';
+  const deltaStr   = pts.length>1 ? `<span class="${trendCls}">${trendArrow}${Math.abs(trend)}</span>` : '';
+  return `<div class="spark-wrap">
+    <svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="display:block">
+      <path d="${path.trim()}" stroke="${strokeCol}" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      ${dots}
+    </svg>
+    <div class="spark-label-row">
+      <span>${pts[0].l} <b>${pts[0].v}</b></span>
+      ${pts.length>1?`<span>${deltaStr}</span><span>${pts.at(-1).l} <b>${pts.at(-1).v}</b></span>`:''}
+    </div>
+  </div>`;
+}
+
+/* ════ Analysis Section ════ */
+function buildAnalysis() {
+  // Classify competencies based on score delta and lookBack
+  const growth = [], improve = [], stagnant = [];
+  const todos = [];
+
+  COMPETENCIES.forEach(c => {
+    const s = c.s, q1 = c.q1;
+    if (s === null && q1 === null) return;
+    const delta = (q1 !== null && s !== null) ? q1 - s : null;
+    const lb = (c.lookBack||'').replace(/<br>/g,' ');
+
+    // Classification logic
+    if (delta !== null) {
+      if (delta >= 8) {
+        growth.push({c, delta, note: lb.slice(0,80)+'…'});
+      } else if (delta <= -15 || (delta < 0 && q1 !== null && q1 < 50)) {
+        stagnant.push({c, delta, note: lb.slice(0,80)+'…'});
+      } else if (delta < 0 || delta < 5) {
+        improve.push({c, delta, note: lb.slice(0,80)+'…'});
+      } else {
+        growth.push({c, delta, note: lb.slice(0,80)+'…'});
+      }
+    }
+  });
+
+  // Sort by delta
+  growth.sort((a,b)=>b.delta-a.delta);
+  stagnant.sort((a,b)=>a.delta-b.delta);
+  improve.sort((a,b)=>a.delta-b.delta);
+
+  const makeCol = (items, cls, icon, title) => {
+    if(!items.length) return `<div class="analysis-col ${cls}">
+      <div class="analysis-col-hdr">${icon} ${title} (0)</div>
+      <div class="analysis-col-body"><div style="color:var(--text-light);font-size:11px;padding:4px">なし</div></div></div>`;
+    return `<div class="analysis-col ${cls}">
+      <div class="analysis-col-hdr">${icon} ${title} (${items.length})</div>
+      <div class="analysis-col-body">
+        ${items.map(({c,delta,note})=>{
+          const dStr = delta>0?`<span class="analysis-item-delta" style="color:#0059B3">▲${delta}</span>`
+                      :delta<0?`<span class="analysis-item-delta" style="color:#E65100">▼${Math.abs(delta)}</span>`
+                      :`<span class="analysis-item-delta" style="color:gray">─</span>`;
+          const idx = COMPETENCIES.indexOf(c);
+          return `<div class="analysis-item" onclick="openDrawerById(${idx})">
+            <div class="analysis-item-name">${c.name} ${dStr}</div>
+            <div class="analysis-item-note">${note}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  };
+
+  document.getElementById('analysisGrid').innerHTML =
+    makeCol(growth,  'growth-col',   '🚀', '大きく成長できた') +
+    makeCol(improve, 'improve-col',  '🔧', '改善の余地がある') +
+    makeCol(stagnant,'stagnant-col', '⚠', '停滞・要テコ入れ');
+
+  // ToDos extracted from lookBacks
+  const todoList = [
+    {text:'PDMGroup組織（Eng/Ope含む）の役割・目標・KPIを言語化してチームに共有する', src:'Managing & Measuring Work'},
+    {text:'「Managing Through Systems」コンピテンシーの正確な意味を理解し、自分なりの実践定義を作る', src:'Managing Through Systems'},
+    {text:'CPOキャリアを前提に、キャリアパスと中期マイルストーンを再設計する', src:'Career Ambition'},
+    {text:'健康トラッキングを再開（ジム・自宅トレーニングの記録可視化）して半年後に比較する', src:'Health'},
+    {text:'心理的安全性を高めるためのHowToを整理し、チームに実践する', src:'Approachability'},
+    {text:'物流・ロジスティクス領域の基礎知識をキャッチアップする（書籍・外部勉強会等）', src:'Self-Development'},
+    {text:'PDMチームのビジョンを策定し、定期的に発信・共有できる仕組みを作る', src:'Managing Vision and Purpose'},
+    {text:'Rakuten 24 ExpressのPMFを定義・仮説立案し、検証サイクルを回す', src:'Customer Focus'},
+    {text:'権限委譲後のフォローアップを仕組み化（定期チェックインの型をつくる）', src:'Delegation'},
+    {text:'各メンバーの強み・成長課題を上長に共有し、評価の妥当性を確認する', src:'Sizing Up People'},
+    {text:'Strategic Agilityで見えているトレンドに対する具体アクションプランを1つ策定する', src:'Strategic Agility'},
+    {text:'AI時代に自分がすべきこと・不要になることを整理し、自己のレバレッジポイントを明確化する', src:'Intellectual Horsepower'},
+    {text:'Negotiating・Peer Relationshipsについて周囲から具体的なFBを収集する', src:'Negotiating / Peer Relationships'},
+  ];
+
+  document.getElementById('todoGrid').innerHTML = todoList.map(t=>`
+    <div class="todo-item">
+      <div>${t.text}</div>
+      <div class="todo-item-src">📌 ${t.src}</div>
+    </div>`).join('');
+}
+
+/* ════ Drawer open by index ════ */
+function openDrawerById(idx) {
+  const card = document.querySelector(`.comp-card[data-idx="${idx}"]`);
+  if(card) openDrawer(idx, card);
+}
 
 /* ════ Competency Cards (grouped by category) ════ */
 const sectionsEl = document.getElementById('compSections');
@@ -510,13 +694,14 @@ Object.keys(CATEGORIES).forEach(catKey => {
         <div class="score-track"><div class="score-fill" style="width:${c.s||0}%;background:${col}"></div></div>
         <div class="score-num" style="color:${col}">${c.s??'—'}</div>
       </div>
-      <div class="q-dots">
-        ${qs.map((q,qi)=>`<div class="q-dot ${q!==null?'on':'off'}" title="2026 Q${qi+1}: ${q??'未採点'}"></div>`).join('')}
-      </div>`;
+      ${makeSpark(c)}`;
     div.addEventListener('click', ()=>openDrawer(gIdx, div));
     grid.appendChild(div);
   });
 });
+
+/* ════ Build Analysis ════ */
+buildAnalysis();
 
 } // end initDashboard()
 
@@ -544,6 +729,7 @@ function openDrawer(idx, cardEl) {
   document.getElementById('dEn').textContent = c.en || '（説明未登録）';
   document.getElementById('dJp').textContent = c.jp || '（日本語訳未登録）';
 
+  // Score history tiles
   document.getElementById('dHist').innerHTML = [
     {p:'2025.10',v:c.s},{p:'2026 Q1',v:c.q1},{p:'2026 Q2',v:c.q2},{p:'2026 Q3',v:c.q3},{p:'2026 Q4',v:c.q4}
   ].map(h=>`
@@ -551,6 +737,9 @@ function openDrawer(idx, cardEl) {
       <div class="d-hist-period">${h.p}</div>
       <div class="d-hist-val" style="color:${scoreColor(h.v)}">${h.v??'—'}</div>
     </div>`).join('');
+  // Drawer sparkline (wider)
+  const dSparkEl = document.getElementById('dSparkEl');
+  if(dSparkEl) dSparkEl.innerHTML = makeSpark(c, 340, 50);
 
   /* ── Look Back ── */
   const lb     = c.lookBack || '';
@@ -586,4 +775,3 @@ function closeDrawer() {
 </script>
 </body>
 </html>
-
