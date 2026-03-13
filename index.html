@@ -677,18 +677,6 @@ function buildAnalysis() {
     </div>`).join('');
 }
 
-/* ════ Accordion toggle ════ */
-function togglePhase(headerEl) {
-  headerEl.closest('.phase-block').classList.toggle('open');
-}
-
-/* ════ Drawer open by index ════ */
-function openDrawerById(idx) {
-  // Find card in main grid (may be null if called from analysis section)
-  const card = document.querySelector(`.comp-card[data-idx="${idx}"]`);
-  openDrawer(idx, card);
-}
-
 /* ════ Competency Cards (grouped by category) ════ */
 const sectionsEl = document.getElementById('compSections');
 
@@ -741,8 +729,20 @@ buildAnalysis();
 
 } // end initDashboard()
 
-/* ════ Drawer ════ */
+/* ════ Drawer ════ (GLOBAL SCOPE) */
 let activeCard = null, activeIdx = null;
+
+/* ════ Accordion toggle ════ */
+function togglePhase(headerEl) {
+  headerEl.closest('.phase-block').classList.toggle('open');
+}
+
+/* ════ Drawer open by index ════ */
+function openDrawerById(idx) {
+  // Find card in main grid (may be null if called from analysis section)
+  const card = document.querySelector(`.comp-card[data-idx="${idx}"]`);
+  openDrawer(idx, card);
+}
 
 function openDrawer(idx, cardEl) {
   if(activeCard) activeCard.classList.remove('active');
@@ -800,7 +800,7 @@ function openDrawer(idx, cardEl) {
 
   document.getElementById('drawer').classList.add('open');
   document.getElementById('overlay').classList.add('open');
-  cardEl.scrollIntoView({ behavior:'smooth', block:'nearest' });
+  if(cardEl) cardEl.scrollIntoView({ behavior:'smooth', block:'nearest' });
 }
 
 function closeDrawer() {
