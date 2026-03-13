@@ -460,6 +460,39 @@ const scoreColor = s =>
 const srcLabel = s =>
   s==='ppt' ? ['PPT','src-ppt'] : s==='lominger' ? ['Lominger','src-lom'] : ['両方','src-both'];
 
+/* ════ Sparkline helper ════ */
+function makeSpark(c, width=88, height=28) {
+  const raw = [{l:'10',v:c.s},{l:'Q1',v:c.q1},{l:'Q2',v:c.q2},{l:'Q3',v:c.q3},{l:'Q4',v:c.q4}];
+  const pts = raw.filter(p=>p.v!==null);
+  if(pts.length < 1) return '<div class="spark-wrap" style="height:34px"></div>';
+  const vals = pts.map(p=>p.v);
+  const minV = Math.max(0, Math.min(...vals) - 8);
+  const maxV = Math.min(100, Math.max(...vals) + 8);
+  const W=width, H=height;
+  const xOf = i => pts.length===1 ? W/2 : (i/(pts.length-1))*W;
+  const yOf = v => H - ((v-minV)/(maxV-minV||1))*H;
+  const trend = pts.length>1 ? (pts.at(-1).v - pts[0].v) : 0;
+  const strokeCol = trend>0?'#0059B3':trend<0?'#E65100':'#90A4AE';
+  let path='', dots='';
+  pts.forEach((p,i)=>{
+    path += (i===0?'M':'L')+' '+xOf(i).toFixed(1)+' '+yOf(p.v).toFixed(1)+' ';
+    dots += `<circle cx="${xOf(i).toFixed(1)}" cy="${yOf(p.v).toFixed(1)}" r="2.8" fill="${scoreColor(p.v)}" stroke="#fff" stroke-width="1"/>`;
+  });
+  const trendArrow = trend>0?'▲':trend<0?'▼':'─';
+  const trendCls   = trend>0?'spark-trend-up':trend<0?'spark-trend-down':'spark-trend-flat';
+  const deltaStr   = pts.length>1 ? `<span class="${trendCls}">${trendArrow}${Math.abs(trend)}</span>` : '';
+  return `<div class="spark-wrap">
+    <svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="display:block">
+      <path d="${path.trim()}" stroke="${strokeCol}" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      ${dots}
+    </svg>
+    <div class="spark-label-row">
+      <span>${pts[0].l} <b>${pts[0].v}</b></span>
+      ${pts.length>1?`<span>${deltaStr}</span><span>${pts.at(-1).l} <b>${pts.at(-1).v}</b></span>`:''}
+    </div>
+  </div>`;
+}
+
 function initDashboard() {
 
 /* ════ KPI ════ */
@@ -567,39 +600,6 @@ new Chart(document.getElementById('trendChart'), {
     }
   }
 });
-
-/* ════ Sparkline helper ════ */
-function makeSpark(c, width=88, height=28) {
-  const raw = [{l:'10',v:c.s},{l:'Q1',v:c.q1},{l:'Q2',v:c.q2},{l:'Q3',v:c.q3},{l:'Q4',v:c.q4}];
-  const pts = raw.filter(p=>p.v!==null);
-  if(pts.length < 1) return '<div class="spark-wrap" style="height:34px"></div>';
-  const vals = pts.map(p=>p.v);
-  const minV = Math.max(0, Math.min(...vals) - 8);
-  const maxV = Math.min(100, Math.max(...vals) + 8);
-  const W=width, H=height;
-  const xOf = i => pts.length===1 ? W/2 : (i/(pts.length-1))*W;
-  const yOf = v => H - ((v-minV)/(maxV-minV||1))*H;
-  const trend = pts.length>1 ? (pts.at(-1).v - pts[0].v) : 0;
-  const strokeCol = trend>0?'#0059B3':trend<0?'#E65100':'#90A4AE';
-  let path='', dots='';
-  pts.forEach((p,i)=>{
-    path += (i===0?'M':'L')+' '+xOf(i).toFixed(1)+' '+yOf(p.v).toFixed(1)+' ';
-    dots += `<circle cx="${xOf(i).toFixed(1)}" cy="${yOf(p.v).toFixed(1)}" r="2.8" fill="${scoreColor(p.v)}" stroke="#fff" stroke-width="1"/>`;
-  });
-  const trendArrow = trend>0?'▲':trend<0?'▼':'─';
-  const trendCls   = trend>0?'spark-trend-up':trend<0?'spark-trend-down':'spark-trend-flat';
-  const deltaStr   = pts.length>1 ? `<span class="${trendCls}">${trendArrow}${Math.abs(trend)}</span>` : '';
-  return `<div class="spark-wrap">
-    <svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="display:block">
-      <path d="${path.trim()}" stroke="${strokeCol}" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-      ${dots}
-    </svg>
-    <div class="spark-label-row">
-      <span>${pts[0].l} <b>${pts[0].v}</b></span>
-      ${pts.length>1?`<span>${deltaStr}</span><span>${pts.at(-1).l} <b>${pts.at(-1).v}</b></span>`:''}
-    </div>
-  </div>`;
-}
 
 /* ════ Analysis Section (5-phase accordion from summaries.json) ════ */
 function buildAnalysis() {
